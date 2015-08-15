@@ -14,10 +14,10 @@ import play.api.libs.json._
 import scalaz._
 import Scalaz._
 
-class ParagraphController @javax.inject.Inject() (actions: Actions) extends Controller {
+class ParagraphController @javax.inject.Inject() (implicit global: Global) extends Controller {
     import NeoModel._
 
-    def register = actions.public { (timestamp, body) =>
+    def register = Actions.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]
         val name = (body \ "name").as[String]
         val userId = UserId(IdGenerator.generate)
