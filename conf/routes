@@ -1,5 +1,5 @@
 POST    /register   @api.ParagraphController.register
-#POST    /start      @api.ParagraphController.start
+POST    /start      @api.ParagraphController.start
 #POST    /continue   @api.ParagraphController.continue
 #POST    /reply      @api.ParagraphController.reply
 #POST    /share      @api.ParagraphController.share

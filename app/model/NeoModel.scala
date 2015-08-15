@@ -14,9 +14,6 @@ object NeoModel {
         val UserId = "userId"
         val UserForeignId = "foreignId"
         val UserName = "name"
-        val ArrowOwner = "ownerId"
-        val ArrowFrom = "from"
-        val ArrowTo = "to"
     }
 
     def TimestampProperty(value: Long) = neo.createProperty(Keys.Timestamp, value)
@@ -26,9 +23,6 @@ object NeoModel {
     def UserIdProperty(value: UserId) = neo.createProperty(Keys.UserId, value)
     def UserForeignIdProperty(value: String) = neo.createProperty(Keys.UserForeignId, value)
     def UserNameProperty(value: String) = neo.createProperty(Keys.UserName, value)
-    def ArrowOwnerProperty(value: UserId) = neo.createProperty(Keys.ArrowOwner, value)
-    def ArrowFromProperty(value: Long) = neo.createProperty(Keys.ArrowFrom, value)
-    def ArrowToProperty(value: Long) = neo.createProperty(Keys.ArrowTo, value)
 
     def RelType(at: ArrowType) = at match {
         case ArrowType.Post => neo.createRelType("POST")
