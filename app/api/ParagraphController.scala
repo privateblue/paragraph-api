@@ -36,11 +36,10 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         }
     }
 
-    def start = Actions.public { (timestamp, body) =>
+    def start = Actions.authenticated { (userId, timestamp, body) =>
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.generate)
-        val userId = UserId("6fd9cde4-c62b-4c4d-b994-46bb13ed465d")
 
         val userParam = UserIdProperty(userId)
         val timeParam = TimestampProperty(timestamp)
