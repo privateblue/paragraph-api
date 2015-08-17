@@ -26,8 +26,6 @@ object Query {
         Kleisli[Err, GraphDatabaseService, T] { db =>
             for {
                 result <- \/.fromTryCatchNonFatal {
-                    println(query.q)
-                    println(query.params)
                     db.execute(query.q, query.params)
                 }.leftMap(e => NeoException(e.getMessage))
 
