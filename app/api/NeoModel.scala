@@ -15,6 +15,7 @@ object NeoModel {
         val BlockId = Property("blockId")
         val BlockTitle = Property("title")
         val BlockBody = Property("body")
+        val BlockBodyType = Property("bodyType")
         val UserId = Property("userId")
         val UserForeignId = Property("foreignId")
         val UserName = Property("name")

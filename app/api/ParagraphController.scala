@@ -37,7 +37,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
     def start = Actions.authenticated { (userId, timestamp, body) =>
         val title = (body \ "title").asOpt[String]
-        val blockBody = (body \ "body").as[BlockBody] // TODO type of block body needs to be stored in database, otherwise it cannot be unmarshalled
+        val blockBody = (body \ "body").as[BlockBody]
 
         for {
             blockId <- Query.newId.map(BlockId.apply)
@@ -46,8 +46,9 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                           MERGE (a)-[:${Arrow.Author} {${Prop.UserId + userId},
                                                        ${Prop.Timestamp + timestamp}}]->(b:${Label.Block} {${Prop.BlockId + blockId},
                                                                                                            ${Prop.Timestamp + timestamp},
-                                                                                                           ${Prop.BlockBody + blockBody},
-                                                                                                           ${Prop.BlockTitle + title}})"""
+                                                                                                           ${Prop.BlockTitle + title},
+                                                                                                           ${Prop.BlockBodyType + blockBody.bodyType},
+                                                                                                           ${Prop.BlockBody + blockBody}})"""
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) blockId
@@ -70,6 +71,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                                                      ${Prop.Timestamp + timestamp}}]->(c:${Label.Block} {${Prop.BlockId + blockId},
                                                                                                          ${Prop.Timestamp + timestamp},
                                                                                                          ${Prop.BlockTitle + title},
+                                                                                                         ${Prop.BlockBodyType + blockBody.bodyType},
                                                                                                          ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
                                                                                                                                                              ${Prop.Timestamp + timestamp}}]-(a)"""
 
