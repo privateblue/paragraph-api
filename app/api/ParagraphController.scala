@@ -82,10 +82,31 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    // def reply = Action {
-    //
-    // }
-    //
+    def reply = Actions.authenticated { (userId, timestamp, body) =>
+        val target = (body \ "target").as[BlockId]
+        val title = (body \ "title").asOpt[String]
+        val blockBody = (body \ "body").as[BlockBody]
+
+        for {
+            blockId <- Query.newId.map(BlockId.apply)
+
+            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
+                                (b:${Label.Block} {${Prop.BlockId + target}})
+                          MERGE (b)-[:${Arrow.Reply} {${Prop.UserId + userId},
+                                                      ${Prop.Timestamp + timestamp}}]->(c:${Label.Block} {${Prop.BlockId + blockId},
+                                                                                                          ${Prop.Timestamp + timestamp},
+                                                                                                          ${Prop.BlockTitle + title},
+                                                                                                          ${Prop.BlockBodyType + blockBody.bodyType},
+                                                                                                          ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
+                                                                                                                                                              ${Prop.Timestamp + timestamp}}]-(a)"""
+
+            response <- Query.result(query) { result =>
+                if (result.getQueryStatistics.containsUpdates) blockId
+                else throw NeoException("Block has not been created")
+            }
+        } yield response
+    }
+
     // def share = Action {
     //
     // }
