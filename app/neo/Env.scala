@@ -17,7 +17,7 @@ case class Env(
 
     private val db = new GraphDatabaseFactory().newEmbeddedDatabase(dbPath)
 
-    def run[T, R](nq: NeoQuery.Exec[T])(success: T => R, failure: Throwable => R): Future[R] = Future {
+    def run[T, R](nq: Query.Exec[T])(success: T => R, failure: Throwable => R): Future[R] = Future {
         val tx = db.beginTx()
         val result = nq(db).fold(
             l = { e =>

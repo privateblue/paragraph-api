@@ -2,7 +2,7 @@ package api
 
 import model.UserId
 
-import neo.NeoQuery
+import neo.Query
 
 import play.api.mvc._
 import play.api.mvc.BodyParsers._
@@ -16,12 +16,12 @@ import Scalaz._
 import scala.concurrent.Future
 
 object Actions {
-    def authenticated[T: Writes](fn: (UserId, Long, JsValue) => NeoQuery.Exec[T])(implicit global: Global) =
+    def authenticated[T: Writes](fn: (UserId, Long, JsValue) => Query.Exec[T])(implicit global: Global) =
         Action.async(parse.json) { request =>
             val token = request.queryString.get("token").flatMap(_.headOption)
-            val publicFn: (Long, JsValue) => NeoQuery.Exec[T] = token match {
+            val publicFn: (Long, JsValue) => Query.Exec[T] = token match {
                 case None =>
-                    (_, _) => NeoQuery.constant(ApiException(403, "You must be logged in for this operation").left)
+                    (_, _) => Query.error(ApiException(403, "You must be logged in for this operation"))
                 case Some(t) =>
                     val userId = Sessions.getUserByToken(t)
                     fn(userId, _, _)
@@ -30,7 +30,7 @@ object Actions {
             action(request)
         }
 
-    def public[T: Writes](fn: (Long, JsValue) => NeoQuery.Exec[T])(implicit global: Global) =
+    def public[T: Writes](fn: (Long, JsValue) => Query.Exec[T])(implicit global: Global) =
         Action.async(parse.json) { request =>
             val timestamp = System.currentTimeMillis
             val exec = fn(timestamp, request.body)

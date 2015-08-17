@@ -29,6 +29,7 @@ case class ArrayValue(value: Seq[NeoValue]) extends NeoValue
 
 object NeoValue {
     def apply[T: NeoValueWrites](v: T) = implicitly[NeoValueWrites[T]].write(v)
+    def unapply(nv: NeoValue): Option[AnyRef] = Some(nv.underlying)
 }
 
 trait NeoValueWrites[-T] {

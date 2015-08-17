@@ -1,9 +1,6 @@
 package api
 
-import model._
-
-import neo.NeoQuery
-import neo.NeoException
+import neo._
 
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Result
@@ -20,41 +17,41 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
     def register = Actions.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]
         val name = (body \ "name").as[String]
-        val userId = UserId(IdGenerator.generate)
 
-        val params = Seq(
-            TimestampProperty(timestamp),
-            UserForeignIdProperty(foreignId),
-            UserNameProperty(name),
-            UserIdProperty(userId)
-        )
-        val query = s"CREATE (a:${Labels.User.name} ${params.toPropString})"
+        for {
+            userId <- Query.newId.map(model.UserId.apply)
 
-        NeoQuery.exec(query, params.toParams) { result =>
-            if (result.getQueryStatistics.containsUpdates) userId.right
-            else NeoException(s"User $name has not been created").left
-        }
+            query = neo"""CREATE (a:${Label.User} {${Prop.UserId + userId},
+                                                   ${Prop.Timestamp + timestamp},
+                                                   ${Prop.UserForeignId + foreignId},
+                                                   ${Prop.UserName + name}})"""
+
+            response <- Query.result(query) { result =>
+                if (result.getQueryStatistics.containsUpdates) userId
+                else throw NeoException(s"User $name has not been created")
+            }
+        } yield response
     }
 
     def start = Actions.authenticated { (userId, timestamp, body) =>
         val title = (body \ "title").asOpt[String]
-        val blockBody = (body \ "body").as[BlockBody]
-        val blockId = BlockId(IdGenerator.generate)
+        val blockBody = (body \ "body").as[model.BlockBody] // TODO type of block body needs to be stored in database, otherwise it cannot be unmarshalled
 
-        val userParam = UserIdProperty(userId)
-        val timeParam = TimestampProperty(timestamp)
-        val blockParams = Seq(
-            timeParam,
-            BlockBodyProperty(blockBody),
-            BlockIdProperty(blockId),
-            BlockTitleProperty(title)
-        )
-        val query = s"MATCH (a:${Labels.User.name} {${userParam.toPropString}}) MERGE (a)-[:${RelType(ArrowType.Author).name} {${userParam.toPropString}, ${timeParam.toPropString}}]->(b:${Labels.Block.name} ${blockParams.toPropString})"
+        for {
+            blockId <- Query.newId.map(model.BlockId.apply)
 
-        NeoQuery.exec(query, (blockParams :+ userParam).toParams) { result =>
-            if (result.getQueryStatistics.containsUpdates) blockId.right
-            else NeoException(s"Block has not been created").left
-        }
+            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})
+                          MERGE (a)-[:${Arrow.Author} {${Prop.UserId + userId},
+                                                       ${Prop.Timestamp + timestamp}}]->(b:${Label.Block} {${Prop.BlockId + blockId},
+                                                                                                           ${Prop.Timestamp + timestamp},
+                                                                                                           ${Prop.BlockTitle + title},
+                                                                                                           ${Prop.BlockBody + blockBody}})"""
+
+            response <- Query.result(query) { result =>
+                if (result.getQueryStatistics.containsUpdates) blockId
+                else throw NeoException("Block has not been created")
+            }
+        } yield response
     }
 
     // def continue = Action {

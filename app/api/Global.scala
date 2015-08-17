@@ -1,7 +1,6 @@
 package api
 
-import neo.Env
-import neo.NeoQuery
+import neo._
 
 import org.slf4j.LoggerFactory
 
@@ -30,11 +29,11 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
         executionContext = system.dispatchers.lookup("neo-dispatcher")
     )
 
-    import model.NeoModel._
+    import NeoModel._
     val init = for {
-        _ <- NeoQuery.exec(s"CREATE CONSTRAINT ON (n:${Labels.User.name}) ASSERT n.${Keys.UserForeignId} IS UNIQUE")(_ => ().right)
-        _ <- NeoQuery.exec(s"CREATE CONSTRAINT ON (n:${Labels.User.name}) ASSERT n.${Keys.UserName} IS UNIQUE")(_ => ().right)
-        _ <- NeoQuery.exec(s"CREATE CONSTRAINT ON (n:${Labels.Block.name}) ASSERT n.${Keys.BlockId} IS UNIQUE")(_ => ().right)
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserForeignId} IS UNIQUE")
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserName} IS UNIQUE")
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Block}) ASSERT n.${Prop.BlockId} IS UNIQUE")
     } yield ()
     neo.run(init)(
         success = _ => logger.info("Database initialized"),
