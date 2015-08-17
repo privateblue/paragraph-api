@@ -1,5 +1,7 @@
 package api
 
+import model._
+
 import neo._
 
 import org.neo4j.graphdb.GraphDatabaseService
@@ -19,7 +21,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val name = (body \ "name").as[String]
 
         for {
-            userId <- Query.newId.map(model.UserId.apply)
+            userId <- Query.newId.map(UserId.apply)
 
             query = neo"""CREATE (a:${Label.User} {${Prop.UserId + userId},
                                                    ${Prop.Timestamp + timestamp},
@@ -35,17 +37,17 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
     def start = Actions.authenticated { (userId, timestamp, body) =>
         val title = (body \ "title").asOpt[String]
-        val blockBody = (body \ "body").as[model.BlockBody] // TODO type of block body needs to be stored in database, otherwise it cannot be unmarshalled
+        val blockBody = (body \ "body").as[BlockBody] // TODO type of block body needs to be stored in database, otherwise it cannot be unmarshalled
 
         for {
-            blockId <- Query.newId.map(model.BlockId.apply)
+            blockId <- Query.newId.map(BlockId.apply)
 
             query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})
                           MERGE (a)-[:${Arrow.Author} {${Prop.UserId + userId},
                                                        ${Prop.Timestamp + timestamp}}]->(b:${Label.Block} {${Prop.BlockId + blockId},
                                                                                                            ${Prop.Timestamp + timestamp},
-                                                                                                           ${Prop.BlockTitle + title},
-                                                                                                           ${Prop.BlockBody + blockBody}})"""
+                                                                                                           ${Prop.BlockBody + blockBody},
+                                                                                                           ${Prop.BlockTitle + title}})"""
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) blockId
@@ -54,10 +56,30 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    // def continue = Action {
-    //
-    // }
-    //
+    def continue = Actions.authenticated { (userId, timestamp, body) =>
+        val target = (body \ "target").as[BlockId]
+        val title = (body \ "title").asOpt[String]
+        val blockBody = (body \ "body").as[BlockBody]
+
+        for {
+            blockId <- Query.newId.map(BlockId.apply)
+
+            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId + target}})
+                          WHERE NOT (b)-[:${Arrow.Post}]->()
+                          MERGE (b)-[:${Arrow.Post} {${Prop.UserId + userId},
+                                                     ${Prop.Timestamp + timestamp}}]->(c:${Label.Block} {${Prop.BlockId + blockId},
+                                                                                                         ${Prop.Timestamp + timestamp},
+                                                                                                         ${Prop.BlockTitle + title},
+                                                                                                         ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
+                                                                                                                                                             ${Prop.Timestamp + timestamp}}]-(a)"""
+
+            response <- Query.result(query) { result =>
+                if (result.getQueryStatistics.containsUpdates) blockId
+                else throw NeoException("Block has not been created")
+            }
+        } yield response
+    }
+
     // def reply = Action {
     //
     // }
