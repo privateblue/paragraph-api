@@ -132,10 +132,20 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    // def link = Action {
-    //
-    // }
-    //
+    def link = Actions.authenticated { (userId, timestamp, body) =>
+        val from = (body \ "from").as[BlockId]
+        val to = (body \ "to").as[BlockId]
+        val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId + from}}),
+                                (b:${Label.Block} {${Prop.BlockId + to}})
+                          MERGE (a)-[:${Arrow.Link} {${Prop.UserId + userId},
+                                                     ${Prop.Timestamp + timestamp}}]->(b)"""
+
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException("Block has not been created")
+        }
+    }
+
     // def quote = Action {
     //
     // }
