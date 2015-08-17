@@ -102,7 +102,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) blockId
-                else throw NeoException("Block has not been created")
+                else throw NeoException("Reply has not been successful")
             }
         } yield response
     }
@@ -127,7 +127,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) blockId
-                else throw NeoException("Block has not been created")
+                else throw NeoException("Share has not been successful")
             }
         } yield response
     }
@@ -142,7 +142,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Block has not been created")
+            else throw NeoException("Link has not been successful")
         }
     }
 
@@ -178,19 +178,35 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) (beforeId, afterId)
-                else throw NeoException("Block has not been created")
+                else throw NeoException("Quote has not been successful")
             }
         } yield response
     }
 
-    // def follow = Action {
-    //
-    // }
-    //
-    // def unfollow = Action {
-    //
-    // }
-    //
+    def follow = Actions.authenticated { (userId, timestamp, body) =>
+        val target = (body \ "target").as[UserId]
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
+                                (b:${Label.User} {${Prop.UserId + target}})
+                          MERGE (a)-[:${Arrow.Follow} {${Prop.UserId + userId},
+                                                       ${Prop.Timestamp + timestamp}}]->(b)"""
+
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException("Follow has not been successful")
+        }
+    }
+
+    def unfollow = Actions.authenticated { (userId, timestamp, body) =>
+        val target = (body \ "target").as[UserId]
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})-[r:${Arrow.Follow}]->(b:${Label.User} {${Prop.UserId + target}})
+                          DELETE r"""
+
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException("Unfollow has not been successful")
+        }
+    }
+
     // def block = Action {
     //
     // }
