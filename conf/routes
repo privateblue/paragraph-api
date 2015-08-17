@@ -4,7 +4,7 @@ POST    /continue   @api.ParagraphController.continue
 POST    /reply      @api.ParagraphController.reply
 POST    /share      @api.ParagraphController.share
 POST    /link       @api.ParagraphController.link
-#POST    /quote      @api.ParagraphController.quote
+POST    /quote      @api.ParagraphController.quote
 #POST    /follow     @api.ParagraphController.follow
 #POST    /unfollow   @api.ParagraphController.unfollow
 #POST    /block      @api.ParagraphController.block

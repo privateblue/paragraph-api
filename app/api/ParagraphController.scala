@@ -146,10 +146,43 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         }
     }
 
-    // def quote = Action {
-    //
-    // }
-    //
+    def quote = Actions.authenticated { (userId, timestamp, body) =>
+        val target = (body \ "target").as[BlockId]
+        val beforeTitle = (body \ "beforeTitle").asOpt[String]
+        val beforeBody = (body \ "beforeBody").as[BlockBody]
+        val afterTitle = (body \ "afterTitle").asOpt[String]
+        val afterBody = (body \ "afterBody").as[BlockBody]
+
+        for {
+            beforeId <- Query.newId.map(BlockId.apply)
+
+            afterId <- Query.newId.map(BlockId.apply)
+
+            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
+                                (c:${Label.Block} {${Prop.BlockId + target}})
+                          MERGE (a)-[:${Arrow.Author} {${Prop.UserId + userId},
+                                                       ${Prop.Timestamp + timestamp}}]->(b:${Label.Block} {${Prop.BlockId + beforeId},
+                                                                                                           ${Prop.Timestamp + timestamp},
+                                                                                                           ${Prop.BlockTitle + beforeTitle},
+                                                                                                           ${Prop.BlockBodyType + beforeBody.bodyType},
+                                                                                                           ${Prop.BlockBody + beforeBody}})
+                                -[:${Arrow.BeforeQuote} {${Prop.UserId + userId},
+                                                         ${Prop.Timestamp + timestamp}}]->(c)-[:${Arrow.AfterQuote} {${Prop.UserId + userId},
+                                                                                                                     ${Prop.Timestamp + timestamp}}]->
+                                (d:${Label.Block} {${Prop.BlockId + afterId},
+                                                   ${Prop.Timestamp + timestamp},
+                                                   ${Prop.BlockTitle + afterTitle},
+                                                   ${Prop.BlockBodyType + afterBody.bodyType},
+                                                   ${Prop.BlockBody + afterBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
+                                                                                                       ${Prop.Timestamp + timestamp}}]-(a)"""
+
+            response <- Query.result(query) { result =>
+                if (result.getQueryStatistics.containsUpdates) (beforeId, afterId)
+                else throw NeoException("Block has not been created")
+            }
+        } yield response
+    }
+
     // def follow = Action {
     //
     // }
