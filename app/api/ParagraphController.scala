@@ -207,12 +207,28 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         }
     }
 
-    // def block = Action {
-    //
-    // }
-    //
-    // def unblock = Action {
-    //
-    // }
+    def block = Actions.authenticated { (userId, timestamp, body) =>
+        val target = (body \ "target").as[UserId]
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
+                                (b:${Label.User} {${Prop.UserId + target}})
+                          MERGE (a)-[:${Arrow.Block} {${Prop.UserId + userId},
+                                                      ${Prop.Timestamp + timestamp}}]->(b)"""
+
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException("Blocking has not been successful")
+        }
+    }
+
+    def unblock = Actions.authenticated { (userId, timestamp, body) =>
+        val target = (body \ "target").as[UserId]
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})-[r:${Arrow.Block}]->(b:${Label.User} {${Prop.UserId + target}})
+                          DELETE r"""
+
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException("Unblocking has not been successful")
+        }
+    }
 
 }
