@@ -30,6 +30,12 @@ package object neo {
             val sanitized = query
                 .replaceAll("\n", "")
                 .replaceAll(" +", " ")
+                .replaceAll("\\{,+", "{")
+                .replaceAll("\\{(, )+", "{")
+                .replaceAll(",+", ",")
+                .replaceAll("(, )+", ", ")
+                .replaceAll(",+}", "}")
+                .replaceAll("(, )+}", "}")
             Query(sanitized, parameters)
         }
     }
