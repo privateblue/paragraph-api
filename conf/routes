@@ -2,7 +2,7 @@ POST    /register   @api.ParagraphController.register
 POST    /start      @api.ParagraphController.start
 POST    /continue   @api.ParagraphController.continue
 POST    /reply      @api.ParagraphController.reply
-#POST    /share      @api.ParagraphController.share
+POST    /share      @api.ParagraphController.share
 #POST    /link       @api.ParagraphController.link
 #POST    /quote      @api.ParagraphController.quote
 #POST    /follow     @api.ParagraphController.follow
