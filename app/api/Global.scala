@@ -10,9 +10,6 @@ import akka.actor.ActorSystem
 
 import play.api.inject.ApplicationLifecycle
 
-import scalaz._
-import Scalaz._
-
 import scala.concurrent.Future
 
 @javax.inject.Singleton

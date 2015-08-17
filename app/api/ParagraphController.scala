@@ -10,9 +10,6 @@ import org.neo4j.graphdb.Result
 import play.api.mvc._
 import play.api.libs.json._
 
-import scalaz._
-import Scalaz._
-
 class ParagraphController @javax.inject.Inject() (implicit global: Global) extends Controller {
     import NeoModel._
 

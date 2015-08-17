@@ -1,9 +1,5 @@
 package api
 
-import neo.Label
-import neo.Property
-import neo.Arrow
-
 object NeoModel {
     object Label {
         val Block = neo.Label("Block")
@@ -11,14 +7,14 @@ object NeoModel {
     }
 
     object Prop {
-        val Timestamp = Property("timestamp")
-        val BlockId = Property("blockId")
-        val BlockTitle = Property("title")
-        val BlockBody = Property("body")
-        val BlockBodyType = Property("bodyType")
-        val UserId = Property("userId")
-        val UserForeignId = Property("foreignId")
-        val UserName = Property("name")
+        val Timestamp = neo.Property("timestamp")
+        val BlockId = neo.Property("blockId")
+        val BlockTitle = neo.Property("title")
+        val BlockBody = neo.Property("body")
+        val BlockBodyType = neo.Property("bodyType")
+        val UserId = neo.Property("userId")
+        val UserForeignId = neo.Property("foreignId")
+        val UserName = neo.Property("name")
     }
 
     object Arrow {

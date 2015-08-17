@@ -5,8 +5,6 @@ import org.neo4j.graphdb.GraphDatabaseService
 
 import org.slf4j.Logger
 
-import scalaz._
-
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 

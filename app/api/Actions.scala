@@ -10,9 +10,6 @@ import play.api.mvc.Results._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
-import scalaz._
-import Scalaz._
-
 import scala.concurrent.Future
 
 object Actions {
