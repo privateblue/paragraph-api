@@ -14,11 +14,13 @@ import scala.concurrent.Future
 
 @javax.inject.Singleton
 class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
-    val system = ActorSystem()
+    implicit val system = ActorSystem()
 
     val config = Config(ConfigFactory.load())
 
     val logger = LoggerFactory.getLogger("Neo")
+
+    val sessions = Sessions(config)
 
     val neo = Env(
         dbPath = config.neoPath,

@@ -16,15 +16,22 @@ object Actions {
     def authenticated[T: Writes](fn: (UserId, Long, JsValue) => Query.Exec[T])(implicit global: Global) =
         Action.async(parse.json) { request =>
             val token = request.queryString.get("token").flatMap(_.headOption)
-            val publicFn: (Long, JsValue) => Query.Exec[T] = token match {
+            val publicFn: Future[(Long, JsValue) => Query.Exec[T]] = token match {
                 case None =>
-                    (_, _) => Query.error(ApiException(403, "You must be logged in for this operation"))
+                    Future.successful {
+                        (_, _) => Query.error(ApiException(401, "You must be logged in for this operation"))
+                    }
                 case Some(t) =>
-                    val userId = Sessions.getUserByToken(t)
-                    fn(userId, _, _)
+                    global.sessions.get(t).map { _.fold(
+                        r = userId => fn(userId, _, _),
+                        l = e => (_, _) => Query.error(e)
+                    )}
             }
-            val action = public(publicFn)
-            action(request)
+            for {
+                fn <- publicFn
+                action = public(fn)
+                result <- action(request)
+            } yield result
         }
 
     def public[T: Writes](fn: (Long, JsValue) => Query.Exec[T])(implicit global: Global) =

@@ -1,11 +1,23 @@
 package api
 
+import scalaz._
+
 case class Config(
-    neoPath: String
+    neoPath: String,
+    redisHost: String,
+    redisPort: Int,
+    redisPassword: Option[String]
 )
 
 object Config {
     def apply(config: com.typesafe.config.Config): Config = Config (
-        neoPath = config.getString("neo.path")
+        neoPath = config.getString("neo.path"),
+        redisHost = config.getString("redis.host"),
+        redisPort = \/.fromTryCatchNonFatal {
+            config.getString("redis.port").toInt
+        }.getOrElse(6379),
+        redisPassword = \/.fromTryCatchNonFatal {
+            config.getString("redis.password")
+        }.toOption
     )
 }
