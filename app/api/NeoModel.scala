@@ -15,6 +15,7 @@ object NeoModel {
         val UserId = neo.Property("userId")
         val UserForeignId = neo.Property("foreignId")
         val UserName = neo.Property("name")
+        val UserPassword = neo.Property("password")
     }
 
     object Arrow {

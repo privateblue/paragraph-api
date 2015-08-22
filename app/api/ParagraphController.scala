@@ -16,6 +16,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
     def register = Actions.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]
         val name = (body \ "name").as[String]
+        val password = (body \ "password").as[String]
 
         for {
             userId <- Query.newId.map(UserId.apply)
@@ -23,7 +24,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
             query = neo"""CREATE (a:${Label.User} {${Prop.UserId + userId},
                                                    ${Prop.Timestamp + timestamp},
                                                    ${Prop.UserForeignId + foreignId},
-                                                   ${Prop.UserName + name}})"""
+                                                   ${Prop.UserName + name},
+                                                   ${Prop.UserPassword + password}})"""
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) userId

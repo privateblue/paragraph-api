@@ -10,6 +10,8 @@ import play.api.mvc.Results._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
+import scalaz._
+
 import scala.concurrent.Future
 
 object Actions {
@@ -22,10 +24,10 @@ object Actions {
                         (_, _) => Query.error(ApiException(401, "You must be logged in for this operation"))
                     }
                 case Some(t) =>
-                    global.sessions.get(t).map { _.fold(
-                        r = userId => fn(userId, _, _),
-                        l = e => (_, _) => Query.error(e)
-                    )}
+                    global.sessions.get(t).run.map {
+                        case \/-(userId) => fn(userId, _, _)
+                        case -\/(e) => (_, _) => Query.error(e)
+                    }
             }
             for {
                 fn <- publicFn
@@ -38,13 +40,13 @@ object Actions {
         Action.async(parse.json) { request =>
             val timestamp = System.currentTimeMillis
             val exec = fn(timestamp, request.body)
-            global.neo.run(exec)(
-                success = v => Ok(Json.obj("data" -> v).toString),
-                failure = renderError(_)
-            )
+            global.neo.run(exec).run.map {
+                case -\/(e) => renderError(e)
+                case \/-(v) => Ok(Json.obj("data" -> v).toString)
+            }
         }
 
-    private def renderError(e: Throwable) = {
+    def renderError(e: Throwable) = {
         val body = Json.obj("error" -> e.getMessage)
         val code = e match {
             case ApiException(c, _) => c
