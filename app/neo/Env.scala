@@ -2,6 +2,7 @@ package neo
 
 import org.neo4j.graphdb.factory.GraphDatabaseFactory
 import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.logging.slf4j.Slf4jLogProvider
 
 import org.slf4j.Logger
 
@@ -15,7 +16,10 @@ case class Env(
     logger: Logger,
     executionContext: ExecutionContext) {
 
-    private val db = new GraphDatabaseFactory().newEmbeddedDatabase(dbPath)
+    private val db =
+        new GraphDatabaseFactory()
+            .setUserLogProvider(new Slf4jLogProvider)
+            .newEmbeddedDatabase(dbPath)
 
     def run[T](nq: Query.Exec[T]): EitherT[Future, Throwable, T] = EitherT {
         Future {
