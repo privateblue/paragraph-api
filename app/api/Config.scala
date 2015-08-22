@@ -6,7 +6,8 @@ case class Config(
     neoPath: String,
     redisHost: String,
     redisPort: Int,
-    redisPassword: Option[String]
+    redisPassword: Option[String],
+    sessionExpire: Long
 )
 
 object Config {
@@ -18,6 +19,9 @@ object Config {
         }.getOrElse(6379),
         redisPassword = \/.fromTryCatchNonFatal {
             config.getString("redis.password")
-        }.toOption
+        }.toOption,
+        sessionExpire = \/.fromTryCatchNonFatal {
+            config.getString("session-expire").toLong
+        }.getOrElse(0L)
     )
 }

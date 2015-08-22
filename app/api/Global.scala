@@ -8,9 +8,14 @@ import com.typesafe.config.ConfigFactory
 
 import akka.actor.ActorSystem
 
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.inject.ApplicationLifecycle
 
+import scalaz._
+
 import scala.concurrent.Future
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 @javax.inject.Singleton
 class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
@@ -34,10 +39,12 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
         _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserName} IS UNIQUE")
         _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Block}) ASSERT n.${Prop.BlockId} IS UNIQUE")
     } yield ()
-    neo.run(init)(
-        success = _ => logger.info("Database initialized"),
-        failure = e => logger.error(s"Database initialization failed: ${e.getMessage}")
-    )
+    val runInit = neo.run(init).run
+    runInit.onSuccess {
+        case -\/(e) => logger.error(s"Database initialization failed: ${e.getMessage}")
+        case \/-(_) => logger.info("Database initialized")
+    }
+    Await.ready(runInit, Duration.Inf)
 
     lifecycle.addStopHook { () =>
         neo.shutdown()

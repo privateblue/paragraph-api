@@ -9,3 +9,5 @@ POST    /follow     @api.ParagraphController.follow
 POST    /unfollow   @api.ParagraphController.unfollow
 POST    /block      @api.ParagraphController.block
 POST    /unblock    @api.ParagraphController.unblock
+
+POST    /login      @api.SessionController.login
