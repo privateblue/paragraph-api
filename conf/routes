@@ -11,3 +11,4 @@ POST    /block      @api.ParagraphController.block
 POST    /unblock    @api.ParagraphController.unblock
 
 POST    /login      @api.SessionController.login
+POST    /logout     @api.SessionController.logout

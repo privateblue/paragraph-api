@@ -27,6 +27,13 @@ case class Sessions(config: Config)(implicit system: ActorSystem) {
         redis.set[String](token, userId.key, if (expire == 0) None else Some(expire)).map { success =>
             if (success) token.right
             else ApiException(503, "Unable to create session").left
-        }
+        }.recoverWith(PartialFunction(e => Future.successful(e.left)))
+    }
+
+    def delete(token: String)(implicit ec: ExecutionContext): EitherT[Future, Throwable, Unit] = EitherT {
+        redis.del(token).map { n =>
+            if (n > 0) ().right
+            else ApiException(500, "Token not found").left
+        }.recoverWith(PartialFunction(e => Future.successful(e.left)))
     }
 }

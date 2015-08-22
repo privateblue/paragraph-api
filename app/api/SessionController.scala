@@ -39,4 +39,18 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
             case \/-(token) => Ok(Json.obj("data" -> token).toString)
         }
     }
+
+    def logout = Action.async(parse.json) { request =>
+        val token = request.queryString.get("token").flatMap(_.headOption)
+        val delete = token match {
+            case Some(t) => global.sessions.delete(t)
+            case _ => EitherT[Future, Throwable, Unit] {
+                Future.successful(-\/(ApiException(401, "You must be logged in for this operation")))
+            }
+        }
+        delete.run.map {
+            case -\/(e) => Actions.renderError(e)
+            case \/-(v) => Ok(Json.obj("data" -> v).toString)
+        }
+    }
 }
