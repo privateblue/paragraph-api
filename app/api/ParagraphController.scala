@@ -15,7 +15,7 @@ import play.api.libs.json._
 class ParagraphController @javax.inject.Inject() (implicit global: Global) extends Controller {
     import NeoModel._
 
-    def register = Actions.public { (timestamp, body) =>
+    def register = Paragraph.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]
         val name = (body \ "name").as[String]
         val password = (body \ "password").as[String]
@@ -37,7 +37,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    def start = Actions.authenticated { (userId, timestamp, body) =>
+    def start = Paragraph.authenticated { (userId, timestamp, body) =>
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
 
@@ -59,7 +59,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    def continue = Actions.authenticated { (userId, timestamp, body) =>
+    def continue = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
@@ -84,7 +84,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    def reply = Actions.authenticated { (userId, timestamp, body) =>
+    def reply = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
@@ -109,7 +109,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    def share = Actions.authenticated { (userId, timestamp, body) =>
+    def share = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
@@ -134,7 +134,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    def link = Actions.authenticated { (userId, timestamp, body) =>
+    def link = Paragraph.authenticated { (userId, timestamp, body) =>
         val from = (body \ "from").as[BlockId]
         val to = (body \ "to").as[BlockId]
         val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId + from}}),
@@ -148,7 +148,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         }
     }
 
-    def quote = Actions.authenticated { (userId, timestamp, body) =>
+    def quote = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val beforeTitle = (body \ "beforeTitle").asOpt[String]
         val beforeBody = (body \ "beforeBody").as[BlockBody]
@@ -185,7 +185,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    def follow = Actions.authenticated { (userId, timestamp, body) =>
+    def follow = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.User} {${Prop.UserId + target}})
@@ -198,7 +198,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         }
     }
 
-    def unfollow = Actions.authenticated { (userId, timestamp, body) =>
+    def unfollow = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})-[r:${Arrow.Follow}]->(b:${Label.User} {${Prop.UserId + target}})
                           DELETE r"""
@@ -209,7 +209,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         }
     }
 
-    def block = Actions.authenticated { (userId, timestamp, body) =>
+    def block = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.User} {${Prop.UserId + target}})
@@ -222,7 +222,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         }
     }
 
-    def unblock = Actions.authenticated { (userId, timestamp, body) =>
+    def unblock = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})-[r:${Arrow.Block}]->(b:${Label.User} {${Prop.UserId + target}})
                           DELETE r"""

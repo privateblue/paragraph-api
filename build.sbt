@@ -14,3 +14,7 @@ libraryDependencies ++= Seq(
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
 routesGenerator := InjectedRoutesGenerator
+
+routesImport ++= Seq(
+    "model._"
+)

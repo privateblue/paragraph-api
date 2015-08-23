@@ -16,9 +16,6 @@ object Query {
 
     def newId = java.util.UUID.randomUUID.toString.point[Exec]
 
-    def error[T](e: Throwable): Exec[T] =
-        Kleisli[Err, GraphDatabaseService, T](_ => e.left)
-
     def execute(query: Query): Exec[Unit] =
         result(query)(_ => ().right)
 
