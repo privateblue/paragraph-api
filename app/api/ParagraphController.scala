@@ -7,6 +7,8 @@ import neo._
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Result
 
+import org.mindrot.jbcrypt.BCrypt
+
 import play.api.mvc._
 import play.api.libs.json._
 
@@ -17,6 +19,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val foreignId = (body \ "foreignId").as[String]
         val name = (body \ "name").as[String]
         val password = (body \ "password").as[String]
+        val hash = BCrypt.hashpw(password, BCrypt.gensalt)
 
         for {
             userId <- Query.newId.map(UserId.apply)
@@ -25,7 +28,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                                                    ${Prop.Timestamp + timestamp},
                                                    ${Prop.UserForeignId + foreignId},
                                                    ${Prop.UserName + name},
-                                                   ${Prop.UserPassword + password}})"""
+                                                   ${Prop.UserPassword + hash}})"""
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) userId

@@ -4,6 +4,8 @@ import model._
 
 import neo._
 
+import org.mindrot.jbcrypt.BCrypt
+
 import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
@@ -26,7 +28,7 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
                 val record = result.next()
                 val userId = UserId(record(s"a.${Prop.UserId.name}").asInstanceOf[String])
                 val stored = record(s"a.${Prop.UserPassword.name}").asInstanceOf[String]
-                if (stored == provided) userId
+                if (BCrypt.checkpw(provided, stored)) userId
                 else throw ApiException(401, "Authentication failed")
             } else throw ApiException(401, "User not found")
         }
