@@ -9,6 +9,7 @@ import org.slf4j.Logger
 import scalaz._
 
 import scala.concurrent.Future
+import scala.concurrent.Promise
 import scala.concurrent.ExecutionContext
 
 case class Env(
@@ -21,23 +22,23 @@ case class Env(
             .setUserLogProvider(new Slf4jLogProvider)
             .newEmbeddedDatabase(dbPath)
 
-    def run[T](nq: Query.Exec[T]): EitherT[Future, Throwable, T] = EitherT {
+    def run[T](nq: Query.Exec[T]): Future[T] = {
+        val promise = Promise[T]
         Future {
             val tx = db.beginTx()
-            val result = nq(db).bimap(
-                { e =>
+            nq(db) match {
+                case -\/(e) =>
                     tx.failure()
+                    tx.close()
                     logger.error(e.getMessage)
-                    e
-                },
-                { res =>
+                    promise failure e
+                case \/-(res) =>
                     tx.success()
-                    res
-                }
-            )
-            tx.close()
-            result
+                    tx.close()
+                    promise success res
+            }
         } (executionContext)
+        promise.future
     }
 
     def shutdown(): Future[Unit] = Future {

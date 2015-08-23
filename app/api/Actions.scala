@@ -7,8 +7,6 @@ import play.api.mvc.Results._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
-import scalaz._
-
 import scala.concurrent.Future
 
 object Actions {
@@ -28,12 +26,12 @@ object Actions {
                 case None => Future.successful {
                     renderError(ApiError(401, "You must be logged in for this operation"))
                 }
-                case Some(t) => global.sessions.get(t).run.flatMap {
-                    case -\/(e) => Future.successful {
-                        renderError(e)
-                    }
-                    case \/-(userId) => fn(request, userId)
-                }
+                case Some(t) =>
+                    global.sessions.get(t)
+                        .flatMap(userId => fn(request, userId))
+                        .recover {
+                            case e: Throwable => renderError(e)
+                        }
             }
         }
 }

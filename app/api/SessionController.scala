@@ -10,9 +10,6 @@ import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
-import scalaz._
-import scalaz.std.scalaFuture._
-
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
@@ -32,13 +29,14 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
                 else throw ApiError(401, "Authentication failed")
             } else throw ApiError(401, "User not found")
         }
+
         val getToken = for {
             userId <- global.neo.run(getUserId)
             token <- global.sessions.create(userId, global.config.sessionExpire)
-        } yield token
-        getToken.run.map {
-            case -\/(e) => Actions.renderError(e)
-            case \/-(token) => Ok(Json.obj("data" -> token).toString)
+        } yield Ok(Json.obj("data" -> token).toString)
+
+        getToken.recover {
+            case e: Throwable => Actions.renderError(e)
         }
     }
 
@@ -46,13 +44,12 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
         val token = request.queryString.get("token").flatMap(_.headOption)
         val delete = token match {
             case Some(t) => global.sessions.delete(t)
-            case _ => EitherT[Future, Throwable, Unit] {
-                Future.successful(-\/(ApiError(401, "You must be logged in for this operation")))
+            case _ => Future.failed(ApiError(401, "You must be logged in for this operation"))
+        }
+        delete
+            .map(v => Ok(Json.obj("data" -> v).toString))
+            .recover {
+                case e: Throwable => Actions.renderError(e)
             }
-        }
-        delete.run.map {
-            case -\/(e) => Actions.renderError(e)
-            case \/-(v) => Ok(Json.obj("data" -> v).toString)
-        }
     }
 }

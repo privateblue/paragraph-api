@@ -10,8 +10,6 @@ import play.api.mvc.Results._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
-import scalaz._
-
 object Reader {
     def authenticated[T: Writes](fn: UserId => Query.Exec[T])(implicit global: Global) =
         Actions.authenticate(parse.empty) { (request, userId) =>
@@ -22,10 +20,10 @@ object Reader {
 
     def public[T: Writes](exec: => Query.Exec[T])(implicit global: Global) =
         Action.async(parse.empty) { request =>
-            val timestamp = System.currentTimeMillis
-            global.neo.run(exec).run.map {
-                case -\/(e) => Actions.renderError(e)
-                case \/-(v) => Ok(Json.obj("data" -> v).toString)
-            }
+            global.neo.run(exec)
+                .map(v => Ok(Json.obj("data" -> v).toString))
+                .recover {
+                    case e: Throwable => Actions.renderError(e)
+                }
         }
 }
