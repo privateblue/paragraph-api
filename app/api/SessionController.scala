@@ -29,8 +29,8 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
                 val userId = UserId(record(s"a.${Prop.UserId.name}").asInstanceOf[String])
                 val stored = record(s"a.${Prop.UserPassword.name}").asInstanceOf[String]
                 if (BCrypt.checkpw(provided, stored)) userId
-                else throw ApiException(401, "Authentication failed")
-            } else throw ApiException(401, "User not found")
+                else throw ApiError(401, "Authentication failed")
+            } else throw ApiError(401, "User not found")
         }
         val getToken = for {
             userId <- global.neo.run(getUserId)
@@ -47,7 +47,7 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
         val delete = token match {
             case Some(t) => global.sessions.delete(t)
             case _ => EitherT[Future, Throwable, Unit] {
-                Future.successful(-\/(ApiException(401, "You must be logged in for this operation")))
+                Future.successful(-\/(ApiError(401, "You must be logged in for this operation")))
             }
         }
         delete.run.map {

@@ -15,7 +15,7 @@ object Actions {
     def renderError(e: Throwable) = {
         val body = Json.obj("error" -> e.getMessage)
         val code = e match {
-            case ApiException(c, _) => c
+            case ApiError(c, _) => c
             case _ => 500
         }
         new Status(code)(body.toString)
@@ -26,7 +26,7 @@ object Actions {
             val token = request.queryString.get("token").flatMap(_.headOption)
             token match {
                 case None => Future.successful {
-                    renderError(ApiException(401, "You must be logged in for this operation"))
+                    renderError(ApiError(401, "You must be logged in for this operation"))
                 }
                 case Some(t) => global.sessions.get(t).run.flatMap {
                     case -\/(e) => Future.successful {
