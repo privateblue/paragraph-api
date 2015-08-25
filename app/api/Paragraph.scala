@@ -23,7 +23,7 @@ object Paragraph {
             val timestamp = System.currentTimeMillis
             val exec = fn(timestamp, request.body)
             global.neo.run(exec)
-                .map(v => Ok(Json.obj("data" -> v).toString))
+                .map(v => Actions.envelope(v))
                 .recover {
                     case e: Throwable => Actions.renderError(e)
                 }

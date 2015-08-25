@@ -10,6 +10,9 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Future
 
 object Actions {
+    def envelope[T: Writes](value: T) =
+        Ok(Json.obj("data" -> value).toString).as("application/json")
+
     def renderError(e: Throwable) = {
         val body = Json.obj("error" -> e.getMessage)
         val code = e match {

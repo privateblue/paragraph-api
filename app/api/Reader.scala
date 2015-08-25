@@ -21,7 +21,7 @@ object Reader {
     def public[T: Writes](exec: => Query.Exec[T])(implicit global: Global) =
         Action.async(parse.empty) { request =>
             global.neo.run(exec)
-                .map(v => Ok(Json.obj("data" -> v).toString))
+                .map(v => Actions.envelope(v))
                 .recover {
                     case e: Throwable => Actions.renderError(e)
                 }
