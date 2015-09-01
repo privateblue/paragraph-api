@@ -18,7 +18,7 @@ class ReadController @javax.inject.Inject() (implicit global: Global) extends Co
             node <- Query.result(neo"""MATCH (b:${Label.Block} {${Prop.BlockId + blockId}}) RETURN b""") { result =>
                 val b = result.columnAs[Node]("b")
                 if (b.hasNext) b.next()
-                else throw ApiError(500, "Block not found")
+                else throw ApiError(404, "Block not found")
             }
 
             block = nodeToBlock(node)
