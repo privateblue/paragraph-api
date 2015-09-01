@@ -40,7 +40,7 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
         }
     }
 
-    def logout = Action.async(parse.json) { request =>
+    def logout = Action.async(parse.empty) { request =>
         val token = request.queryString.get("token").flatMap(_.headOption)
         val delete = token match {
             case Some(t) => global.sessions.delete(t)
