@@ -59,7 +59,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         } yield response
     }
 
-    def continue = Paragraph.authenticated { (userId, timestamp, body) =>
+    def append = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
@@ -67,9 +67,9 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         for {
             blockId <- Query.newId.map(BlockId.apply)
 
-            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId + target}})
-                          WHERE NOT (b)-[:${Arrow.Post}]->()
-                          MERGE (b)-[:${Arrow.Post} {${Prop.UserId + userId},
+            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
+                                (b:${Label.Block} {${Prop.BlockId + target}})
+                          MERGE (b)-[:${Arrow.Link} {${Prop.UserId + userId},
                                                      ${Prop.Timestamp + timestamp}}]->(c:${Label.Block} {${Prop.BlockId + blockId},
                                                                                                          ${Prop.Timestamp + timestamp},
                                                                                                          ${Prop.BlockTitle + title},
@@ -79,12 +79,12 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) blockId
-                else throw NeoException("Block has not been created")
+                else throw NeoException("Append failed")
             }
         } yield response
     }
 
-    def reply = Paragraph.authenticated { (userId, timestamp, body) =>
+    def prepend = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
@@ -94,42 +94,17 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
             query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.Block} {${Prop.BlockId + target}})
-                          MERGE (b)-[:${Arrow.Reply} {${Prop.UserId + userId},
-                                                      ${Prop.Timestamp + timestamp}}]->(c:${Label.Block} {${Prop.BlockId + blockId},
-                                                                                                          ${Prop.Timestamp + timestamp},
-                                                                                                          ${Prop.BlockTitle + title},
-                                                                                                          ${Prop.BlockBodyType + blockBody.bodyType},
-                                                                                                          ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
-                                                                                                                                                              ${Prop.Timestamp + timestamp}}]-(a)"""
+                          MERGE (b)<-[:${Arrow.Link} {${Prop.UserId + userId},
+                                                      ${Prop.Timestamp + timestamp}}]-(c:${Label.Block} {${Prop.BlockId + blockId},
+                                                                                                         ${Prop.Timestamp + timestamp},
+                                                                                                         ${Prop.BlockTitle + title},
+                                                                                                         ${Prop.BlockBodyType + blockBody.bodyType},
+                                                                                                         ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
+                                                                                                                                                             ${Prop.Timestamp + timestamp}}]-(a)"""
 
             response <- Query.result(query) { result =>
                 if (result.getQueryStatistics.containsUpdates) blockId
-                else throw NeoException("Reply has not been successful")
-            }
-        } yield response
-    }
-
-    def share = Paragraph.authenticated { (userId, timestamp, body) =>
-        val target = (body \ "target").as[BlockId]
-        val title = (body \ "title").asOpt[String]
-        val blockBody = (body \ "body").as[BlockBody]
-
-        for {
-            blockId <- Query.newId.map(BlockId.apply)
-
-            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
-                                (b:${Label.Block} {${Prop.BlockId + target}})
-                          MERGE (b)<-[:${Arrow.Share} {${Prop.UserId + userId},
-                                                       ${Prop.Timestamp + timestamp}}]-(c:${Label.Block} {${Prop.BlockId + blockId},
-                                                                                                          ${Prop.Timestamp + timestamp},
-                                                                                                          ${Prop.BlockTitle + title},
-                                                                                                          ${Prop.BlockBodyType + blockBody.bodyType},
-                                                                                                          ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
-                                                                                                                                                              ${Prop.Timestamp + timestamp}}]-(a)"""
-
-            response <- Query.result(query) { result =>
-                if (result.getQueryStatistics.containsUpdates) blockId
-                else throw NeoException("Share has not been successful")
+                else throw NeoException("Prepend failed")
             }
         } yield response
     }
@@ -146,43 +121,6 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
             if (result.getQueryStatistics.containsUpdates) ()
             else throw NeoException("Link has not been successful")
         }
-    }
-
-    def quote = Paragraph.authenticated { (userId, timestamp, body) =>
-        val target = (body \ "target").as[BlockId]
-        val beforeTitle = (body \ "beforeTitle").asOpt[String]
-        val beforeBody = (body \ "beforeBody").as[BlockBody]
-        val afterTitle = (body \ "afterTitle").asOpt[String]
-        val afterBody = (body \ "afterBody").as[BlockBody]
-
-        for {
-            beforeId <- Query.newId.map(BlockId.apply)
-
-            afterId <- Query.newId.map(BlockId.apply)
-
-            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
-                                (c:${Label.Block} {${Prop.BlockId + target}})
-                          MERGE (a)-[:${Arrow.Author} {${Prop.UserId + userId},
-                                                       ${Prop.Timestamp + timestamp}}]->(b:${Label.Block} {${Prop.BlockId + beforeId},
-                                                                                                           ${Prop.Timestamp + timestamp},
-                                                                                                           ${Prop.BlockTitle + beforeTitle},
-                                                                                                           ${Prop.BlockBodyType + beforeBody.bodyType},
-                                                                                                           ${Prop.BlockBody + beforeBody}})
-                                -[:${Arrow.BeforeQuote} {${Prop.UserId + userId},
-                                                         ${Prop.Timestamp + timestamp}}]->(c)-[:${Arrow.AfterQuote} {${Prop.UserId + userId},
-                                                                                                                     ${Prop.Timestamp + timestamp}}]->
-                                (d:${Label.Block} {${Prop.BlockId + afterId},
-                                                   ${Prop.Timestamp + timestamp},
-                                                   ${Prop.BlockTitle + afterTitle},
-                                                   ${Prop.BlockBodyType + afterBody.bodyType},
-                                                   ${Prop.BlockBody + afterBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
-                                                                                                       ${Prop.Timestamp + timestamp}}]-(a)"""
-
-            response <- Query.result(query) { result =>
-                if (result.getQueryStatistics.containsUpdates) (beforeId, afterId)
-                else throw NeoException("Quote has not been successful")
-            }
-        } yield response
     }
 
     def follow = Paragraph.authenticated { (userId, timestamp, body) =>
