@@ -114,12 +114,27 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val to = (body \ "to").as[BlockId]
         val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId + from}}),
                                 (b:${Label.Block} {${Prop.BlockId + to}})
-                          MERGE (a)-[:${Arrow.Link} {${Prop.UserId + userId},
-                                                     ${Prop.Timestamp + timestamp}}]->(b)"""
+                          MERGE (a)-[link:${Arrow.Link}]->(b)
+                          ON CREATE SET ${Prop.UserId + userId + "link"},
+                                        ${Prop.Timestamp + timestamp + "link"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Link has not been successful")
+            else throw NeoException("Already linked")
+        }
+    }
+
+    def view = Paragraph.authenticated { (userId, timestamp, body) =>
+        val target = (body \ "from").as[BlockId]
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
+                                (b:${Label.Block} {${Prop.BlockId + target}})
+                          MERGE (a)-[view:${Arrow.View}]->(b)
+                          ON CREATE SET ${Prop.UserId + userId + "view"},
+                                        ${Prop.Timestamp + timestamp + "view"}"""
+
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException("Already viewed")
         }
     }
 
@@ -127,12 +142,13 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.User} {${Prop.UserId + target}})
-                          MERGE (a)-[:${Arrow.Follow} {${Prop.UserId + userId},
-                                                       ${Prop.Timestamp + timestamp}}]->(b)"""
+                          MERGE (a)-[follow:${Arrow.Follow}]->(b)
+                          ON CREATE SET ${Prop.UserId + userId + "follow"},
+                                        ${Prop.Timestamp + timestamp + "follow"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Follow has not been successful")
+            else throw NeoException("Already followed")
         }
     }
 
@@ -151,12 +167,13 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.User} {${Prop.UserId + target}})
-                          MERGE (a)-[:${Arrow.Block} {${Prop.UserId + userId},
-                                                      ${Prop.Timestamp + timestamp}}]->(b)"""
+                          MERGE (a)-[block:${Arrow.Block}]->(b)
+                          ON CREATE SET ${Prop.UserId + userId + "block"},
+                                        ${Prop.Timestamp + timestamp + "block"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Blocking has not been successful")
+            else throw NeoException("Already blocked")
         }
     }
 

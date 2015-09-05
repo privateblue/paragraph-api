@@ -17,6 +17,10 @@ package object neo {
                         val pName = s"p$c"
                         (rest, Query(s"$q$name:{$pName}$cur", params + (pName -> underlying)), c + 1)
 
+                    case ((PropertyValue.Aliased(alias, name, NeoValue(underlying))::rest, Query(q, params), c), cur) =>
+                        val pName = s"p$c"
+                        (rest, Query(s"$q$alias.$name={$pName}$cur", params + (pName -> underlying)), c + 1)
+
                     case ((PropertyValue.Empty::rest, Query(q, params), c), cur) =>
                         (rest, Query(s"$q$cur", params), c)
 

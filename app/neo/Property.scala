@@ -11,6 +11,11 @@ case class Property(name: String) {
 sealed trait PropertyValue
 
 object PropertyValue {
-    case class NonEmpty(name: String, value: NeoValue) extends PropertyValue
-    case object Empty extends PropertyValue
+    case class NonEmpty(name: String, value: NeoValue) extends PropertyValue {
+        def +(alias: String) = Aliased(alias, name, value)
+    }
+    case class Aliased(alias: String, name: String, value: NeoValue) extends PropertyValue
+    case object Empty extends PropertyValue {
+        def +(alias: String) = Empty
+    }
 }

@@ -31,6 +31,7 @@ object NeoModel {
     object Arrow {
         val Link = neo.Arrow("LINK")
         val Author = neo.Arrow("AUTHOR")
+        val View = neo.Arrow("VIEW")
         val Follow = neo.Arrow("FOLLOW")
         val Block = neo.Arrow("BLOCK")
     }
