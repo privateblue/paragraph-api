@@ -125,16 +125,16 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
     }
 
     def view = Paragraph.authenticated { (userId, timestamp, body) =>
-        val target = (body \ "from").as[BlockId]
+        val target = (body \ "target").as[BlockId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.Block} {${Prop.BlockId + target}})
+                          WHERE NOT (a)-[:${Arrow.Author}]->(b)
                           MERGE (a)-[view:${Arrow.View}]->(b)
                           ON CREATE SET ${Prop.UserId + userId + "view"},
                                         ${Prop.Timestamp + timestamp + "view"}"""
 
         Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Already viewed")
+            ()
         }
     }
 
