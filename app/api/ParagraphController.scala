@@ -22,7 +22,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val hash = BCrypt.hashpw(password, BCrypt.gensalt)
 
         for {
-            userId <- Query.newId.map(UserId.apply)
+            userId <- IdGenerator.key.map(UserId.apply)
 
             query = neo"""CREATE (a:${Label.User} {${Prop.UserId + userId},
                                                    ${Prop.Timestamp + timestamp},
@@ -42,7 +42,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val blockBody = (body \ "body").as[BlockBody]
 
         for {
-            blockId <- Query.newId.map(BlockId.apply)
+            blockId <- IdGenerator.key.map(BlockId.apply)
 
             query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})
                           MERGE (a)-[:${Arrow.Author} {${Prop.UserId + userId},
@@ -65,7 +65,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val blockBody = (body \ "body").as[BlockBody]
 
         for {
-            blockId <- Query.newId.map(BlockId.apply)
+            blockId <- IdGenerator.key.map(BlockId.apply)
 
             query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.Block} {${Prop.BlockId + target}})
@@ -90,7 +90,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val blockBody = (body \ "body").as[BlockBody]
 
         for {
-            blockId <- Query.newId.map(BlockId.apply)
+            blockId <- IdGenerator.key.map(BlockId.apply)
 
             query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.Block} {${Prop.BlockId + target}})

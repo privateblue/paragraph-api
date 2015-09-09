@@ -14,8 +14,6 @@ object Query {
     type Err[T] = Throwable \/ T
     type Exec[T] = ReaderT[Err, GraphDatabaseService, T]
 
-    def newId = java.util.UUID.randomUUID.toString.point[Exec]
-
     def execute(query: Query): Exec[Unit] =
         result(query)(_ => ().right)
 
