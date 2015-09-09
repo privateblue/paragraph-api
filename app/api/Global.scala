@@ -45,13 +45,6 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
             }
     Await.ready(runInit, Duration.Inf)
 
-    val runOneOff =
-        neo.run(Query.execute(neo"match (a)-[r:REPLY|POST]->(b) delete r"))
-            .recover {
-                case e: Throwable => logger.error(e.getMessage)
-            }
-    Await.ready(runOneOff, Duration.Inf)
-
     lifecycle.addStopHook { () =>
         neo.shutdown()
     }
