@@ -47,51 +47,6 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
             }
     Await.ready(runInit, Duration.Inf)
 
-    val oneOff = for {
-        _ <- Query.lift { db =>
-            val nodes = db.findNodes(Label.Block)
-            while(nodes.hasNext) {
-                val node = nodes.next()
-                val key = node.getProperty(Prop.BlockId.name).asInstanceOf[String]
-                val uuid = java.util.UUID.fromString(key)
-                val newId = IdGenerator.encode(uuid)
-                node.setProperty(Prop.BlockId.name, newId)
-                logger.info(s"Changing block id from $key to $newId")
-            }
-        }
-
-        _ <- Query.lift { db =>
-            val nodes = db.findNodes(Label.User)
-            while(nodes.hasNext) {
-                val node = nodes.next()
-                val key = node.getProperty(Prop.UserId.name).asInstanceOf[String]
-                val uuid = java.util.UUID.fromString(key)
-                val newId = IdGenerator.encode(uuid)
-                node.setProperty(Prop.UserId.name, newId)
-                logger.info(s"Changing user id from $key to $newId")
-            }
-        }
-
-        _ <- Query.lift { db =>
-            val rels = org.neo4j.tooling.GlobalGraphOperations.at(db).getAllRelationships().iterator
-            while(rels.hasNext) {
-                val rel = rels.next()
-                val key = rel.getProperty(Prop.UserId.name).asInstanceOf[String]
-                val uuid = java.util.UUID.fromString(key)
-                val newId = IdGenerator.encode(uuid)
-                rel.setProperty(Prop.BlockId.name, newId)
-                logger.info(s"Changing relationship user id from $key to $newId")
-            }
-        }
-    } yield ()
-    val runOneOff =
-        neo.run(oneOff)
-            .map(_ => logger.info("One-off maintenance task finished"))
-            .recover {
-                case e: Throwable => logger.error(s"One-off maintenance task failed failed: ${e.getMessage}")
-            }
-    Await.ready(runOneOff, Duration.Inf)
-
     lifecycle.addStopHook { () =>
         neo.shutdown()
     }
