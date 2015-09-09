@@ -2,11 +2,16 @@ package api
 
 import neo.Query
 
+import com.fasterxml.uuid.Generators
+import com.fasterxml.uuid.EthernetAddress
+
 import scalaz._
 import Scalaz._
 
 object IdGenerator {
-    def generateUUID = java.util.UUID.randomUUID
+    val generator = Generators.timeBasedGenerator(EthernetAddress.fromInterface)
+
+    def generateUUID = generator.generate
 
     def encode(uuid: java.util.UUID) = {
         val msb = uuid.getMostSignificantBits
