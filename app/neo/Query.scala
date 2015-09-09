@@ -33,4 +33,9 @@ object Query {
                 _ = result.close()
             } yield ret
         }
+
+    def lift[T](fn: GraphDatabaseService => T): Exec[T] =
+        Kleisli[Err, GraphDatabaseService, T] { db =>
+            \/.fromTryCatchNonFatal(fn(db)).leftMap(e => NeoException(e.getMessage))
+        }
 }

@@ -5,24 +5,32 @@ import model._
 import neo._
 
 import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.Relationship
+import org.neo4j.graphdb.Direction
 
 import play.api.mvc._
+
+import scalaz._
 
 import scala.collection.JavaConversions._
 
 class ReadController @javax.inject.Inject() (implicit global: Global) extends Controller {
     import NeoModel._
 
-    def permalink(blockId: BlockId) = Reader.public {
-        for {
-            node <- Query.result(neo"""MATCH (b:${Label.Block} {${Prop.BlockId + blockId}}) RETURN b""") { result =>
-                val b = result.columnAs[Node]("b")
-                if (b.hasNext) b.next()
-                else throw ApiError(404, "Block not found")
-            }
-
-            block = nodeToBlock(node)
-        } yield block
+    def path(blockIds: Seq[BlockId]) = Reader.public {
+        Query.lift { db =>
+            blockIds.foldLeft(List.empty[Block]) {
+                case (Nil, id) =>
+                    val first = Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying)).getOrElse(throw ApiError(404, s"Block $id not found"))
+                    nodeToBlock(first)::Nil
+                case (path, id) =>
+                    if (path.head.outgoing.exists(c => c.blockId == id && c.arrow == Arrow.Link)) {
+                        val res = db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying)
+                        val next = Option(res).getOrElse(throw ApiError(404, s"Block $id not found"))
+                        nodeToBlock(next)::path
+                    } else throw ApiError(404, s"""Path from ${path.map(_.blockId).reverse.mkString("-->")} to $id not found""")
+            }.reverse
+        }
     }
 
     // TODO validation if all properties are present

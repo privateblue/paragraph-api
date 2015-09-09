@@ -12,4 +12,4 @@ POST    /unblock    @api.ParagraphController.unblock
 POST    /login      @api.SessionController.login
 POST    /logout     @api.SessionController.logout
 
-GET     /block/:blockId     @api.ReadController.permalink(blockId: BlockId)
+GET     /path       @api.ReadController.path(blockIds: Seq[BlockId])
