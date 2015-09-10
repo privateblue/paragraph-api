@@ -7,8 +7,7 @@ import play.api.libs.json._
 case class Connection(
     userId: UserId,
     timestamp: Long,
-    arrow: Arrow,
-    blockId: BlockId
+    arrow: Arrow
 )
 
 object Connection {

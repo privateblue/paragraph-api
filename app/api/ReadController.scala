@@ -24,7 +24,7 @@ class ReadController @javax.inject.Inject() (implicit global: Global) extends Co
                     val first = Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying)).getOrElse(throw ApiError(404, s"Block $id not found"))
                     nodeToBlock(first)::Nil
                 case (path, id) =>
-                    if (path.head.outgoing.exists(c => c.blockId == id && c.arrow == Arrow.Link)) {
+                    if (path.head.outgoing.exists(c => c.blockId == id && c.connection.arrow == Arrow.Link)) {
                         val res = db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying)
                         val next = Option(res).getOrElse(throw ApiError(404, s"Block $id not found"))
                         nodeToBlock(next)::path
@@ -34,14 +34,10 @@ class ReadController @javax.inject.Inject() (implicit global: Global) extends Co
     }
 
     // TODO validation if all properties are present
-    private def relationshipToConnection(base: Node, rel: Relationship) = Connection(
+    private def relationshipToConnection(rel: Relationship) = Connection(
         userId = UserId(rel.getProperty(Prop.UserId.name).asInstanceOf[String]),
         timestamp = rel.getProperty(Prop.Timestamp.name).asInstanceOf[Long],
-        arrow = neo.Arrow(rel.getType.name),
-        blockId = {
-            val node = rel.getOtherNode(base)
-            BlockId(node.getProperty(Prop.BlockId.name).asInstanceOf[String])
-        }
+        arrow = neo.Arrow(rel.getType.name)
     )
 
     // TODO validation if node is really a user node with all properties present
@@ -76,13 +72,28 @@ class ReadController @javax.inject.Inject() (implicit global: Global) extends Co
         incoming = {
             node.getRelationships(Direction.INCOMING)
                 .filter(_.getOtherNode(node).getLabels.toSeq.contains(Label.Block))
-                .map(rel => relationshipToConnection(node, rel))
+                .map { rel =>
+                    val connection = relationshipToConnection(rel)
+                    val other = rel.getStartNode
+                    val otherId = BlockId(other.getProperty(Prop.BlockId.name).asInstanceOf[String])
+                    BlockConnection(connection, otherId)
+                }
                 .toSeq
         },
         outgoing = {
             node.getRelationships(Direction.OUTGOING)
                 .filter(_.getOtherNode(node).getLabels.toSeq.contains(Label.Block))
-                .map(rel => relationshipToConnection(node, rel))
+                .map { rel =>
+                    val connection = relationshipToConnection(rel)
+                    val other = rel.getEndNode
+                    val otherId = BlockId(other.getProperty(Prop.BlockId.name).asInstanceOf[String])
+                    BlockConnection(connection, otherId)
+                }
+                .toSeq
+        },
+        seen = {
+            node.getRelationships(Direction.INCOMING, Arrow.View)
+                .map(relationshipToConnection)
                 .toSeq
         }
     )

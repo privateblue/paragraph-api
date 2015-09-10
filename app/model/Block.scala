@@ -8,8 +8,9 @@ case class Block(
     timestamp: Long,
     body: BlockBody,
     author: User,
-    incoming: Seq[Connection],
-    outgoing: Seq[Connection]
+    incoming: Seq[BlockConnection],
+    outgoing: Seq[BlockConnection],
+    seen: Seq[Connection]
 )
 
 object Block {
