@@ -48,20 +48,6 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
             }
     Await.ready(runInit, Duration.Inf)
 
-    val fix = Query.lift { db =>
-        val nodes = db.getAllNodes().iterator
-        while (nodes.hasNext) {
-            val node = nodes.next()
-            val rels = node.getRelationships().iterator
-            while (rels.hasNext) {
-                val rel = rels.next()
-                val userId = rel.getProperty("userId").asInstanceOf[String]
-                if (userId.size == 36) rel.setProperty("userId", IdGenerator.encode(java.util.UUID.fromString(userId)))
-            }
-        }
-    }
-    Await.ready(neo.run(fix), Duration.Inf)
-
     lifecycle.addStopHook { () =>
         neo.shutdown()
     }
