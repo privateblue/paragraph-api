@@ -20,31 +20,24 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val name = (body \ "name").as[String]
         val password = (body \ "password").as[String]
         val hash = BCrypt.hashpw(password, BCrypt.gensalt)
-
-        for {
-            userId <- IdGenerator.key.map(UserId.apply)
-
-            query = neo"""CREATE (a:${Label.User} {${Prop.UserId + userId},
+        val userId = UserId(IdGenerator.key)
+        val query = neo"""CREATE (a:${Label.User} {${Prop.UserId + userId},
                                                    ${Prop.Timestamp + timestamp},
                                                    ${Prop.UserForeignId + foreignId},
                                                    ${Prop.UserName + name},
                                                    ${Prop.UserPassword + hash}})"""
 
-            response <- Query.result(query) { result =>
-                if (result.getQueryStatistics.containsUpdates) userId
-                else throw NeoException(s"User $name has not been created")
-            }
-        } yield response
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) userId
+            else throw NeoException(s"User $name has not been created")
+        }
     }
 
     def start = Paragraph.authenticated { (userId, timestamp, body) =>
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
-
-        for {
-            blockId <- IdGenerator.key.map(BlockId.apply)
-
-            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})
+        val blockId = BlockId(IdGenerator.key)
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})
                           MERGE (a)-[:${Arrow.Author} {${Prop.UserId + userId},
                                                        ${Prop.Timestamp + timestamp}}]->(b:${Label.Block} {${Prop.BlockId + blockId},
                                                                                                            ${Prop.Timestamp + timestamp},
@@ -52,22 +45,18 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                                                                                                            ${Prop.BlockBodyType + blockBody.bodyType},
                                                                                                            ${Prop.BlockBody + blockBody}})"""
 
-            response <- Query.result(query) { result =>
-                if (result.getQueryStatistics.containsUpdates) blockId
-                else throw NeoException("Block has not been created")
-            }
-        } yield response
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Block has not been created")
+        }
     }
 
     def append = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
-
-        for {
-            blockId <- IdGenerator.key.map(BlockId.apply)
-
-            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
+        val blockId = BlockId(IdGenerator.key)
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.Block} {${Prop.BlockId + target}})
                           MERGE (b)-[:${Arrow.Link} {${Prop.UserId + userId},
                                                      ${Prop.Timestamp + timestamp}}]->(c:${Label.Block} {${Prop.BlockId + blockId},
@@ -77,22 +66,18 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                                                                                                          ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
                                                                                                                                                              ${Prop.Timestamp + timestamp}}]-(a)"""
 
-            response <- Query.result(query) { result =>
-                if (result.getQueryStatistics.containsUpdates) blockId
-                else throw NeoException("Append failed")
-            }
-        } yield response
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Append failed")
+        }
     }
 
     def prepend = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
-
-        for {
-            blockId <- IdGenerator.key.map(BlockId.apply)
-
-            query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
+        val blockId = BlockId(IdGenerator.key)
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.Block} {${Prop.BlockId + target}})
                           MERGE (b)<-[:${Arrow.Link} {${Prop.UserId + userId},
                                                       ${Prop.Timestamp + timestamp}}]-(c:${Label.Block} {${Prop.BlockId + blockId},
@@ -102,11 +87,10 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                                                                                                          ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
                                                                                                                                                              ${Prop.Timestamp + timestamp}}]-(a)"""
 
-            response <- Query.result(query) { result =>
-                if (result.getQueryStatistics.containsUpdates) blockId
-                else throw NeoException("Prepend failed")
-            }
-        } yield response
+        Query.result(query) { result =>
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Prepend failed")
+        }
     }
 
     def link = Paragraph.authenticated { (userId, timestamp, body) =>

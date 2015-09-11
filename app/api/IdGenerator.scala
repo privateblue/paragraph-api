@@ -21,5 +21,5 @@ object IdGenerator {
         base64.substring(0, 22)
     }
 
-    def key: Query.Exec[String] = encode(generateUUID).point[Query.Exec]
+    def key: String = encode(generateUUID)
 }
