@@ -13,22 +13,40 @@ case class Sessions(config: Config)(implicit system: ActorSystem) {
     private val redis = RedisClient(config.redisHost, config.redisPort, config.redisPassword)
 
     def get(token: String)(implicit ec: ExecutionContext): Future[UserId] =
-        redis.get[String](token).map {
-            case Some(t) => UserId(t)
-            case _ => throw ApiError(401, "Token not found")
+        redis.get[UserId](token).map {
+            case Some(id) => id
+            case _ => throw ApiError(401, "User not found")
         }
 
-    def create(userId: UserId, expire: Long = 0)(implicit ec: ExecutionContext): Future[String] = {
-        val token = java.util.UUID.randomUUID.toString
-        redis.set[String](token, userId.key, if (expire == 0) None else Some(expire)).map { success =>
-            if (success) token
-            else throw ApiError(503, "Unable to create session")
+    def start(userId: UserId, expire: Long = 0)(implicit ec: ExecutionContext): Future[String] = {
+        redis.get[String](userId.toString).flatMap {
+            case Some(token) =>
+                get(token)
+                    .map(_ => token)
+                    .recoverWith {
+                        case ApiError(_, _) => for {
+                            _ <- remove(token)
+                            newToken <- generate(userId, expire)
+                        } yield newToken
+                    }
+            case _ =>
+                generate(userId, expire)
         }
     }
 
-    def delete(token: String)(implicit ec: ExecutionContext): Future[Unit] =
-        redis.del(token).map { n =>
-            if (n > 0) ()
-            else throw ApiError(500, "Token not found")
-        }
+    def generate(userId: UserId, expire: Long = 0)(implicit ec: ExecutionContext): Future[String] = {
+        val token = IdGenerator.key
+        for {
+            s1 <- redis.set[String](userId.toString, token, if (expire == 0) None else Some(expire))
+            s2 <- redis.set[UserId](token, userId, if (expire == 0) None else Some(expire))
+        } yield
+            if (s1 && s2) token
+            else throw ApiError(503, "Unable to create session")
+    }
+
+    def remove(token: String)(implicit ec: ExecutionContext): Future[Unit] = for {
+        userId <- redis.get[UserId](token)
+        _ <- userId.map(id => redis.del(id.toString)).getOrElse(Future.successful(()))
+        _ <- redis.del(token)
+    } yield ()
 }

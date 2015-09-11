@@ -32,7 +32,7 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
 
         val getToken = for {
             userId <- global.neo.run(getUserId)
-            token <- global.sessions.create(userId, global.config.sessionExpire)
+            token <- global.sessions.start(userId, global.config.sessionExpire)
         } yield Ok(Json.obj("data" -> model.Session(userId = userId, token = token, name = name)).toString)
 
         getToken.recover {
@@ -43,7 +43,7 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
     def logout = Action.async(parse.empty) { request =>
         val token = request.queryString.get("token").flatMap(_.headOption)
         val delete = token match {
-            case Some(t) => global.sessions.delete(t)
+            case Some(t) => global.sessions.remove(t)
             case _ => Future.failed(ApiError(401, "You must be logged in for this operation"))
         }
         delete
