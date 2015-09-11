@@ -99,8 +99,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId + from}}),
                                 (b:${Label.Block} {${Prop.BlockId + to}})
                           MERGE (a)-[link:${Arrow.Link}]->(b)
-                          ON CREATE SET ${Prop.UserId + userId + "link"},
-                                        ${Prop.Timestamp + timestamp + "link"}"""
+                          ON CREATE SET ${Prop.UserId + userId of "link"},
+                                        ${Prop.Timestamp + timestamp of "link"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
@@ -114,8 +114,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                                 (b:${Label.Block} {${Prop.BlockId + target}})
                           WHERE NOT (a)-[:${Arrow.Author}]->(b)
                           MERGE (a)-[view:${Arrow.View}]->(b)
-                          ON CREATE SET ${Prop.UserId + userId + "view"},
-                                        ${Prop.Timestamp + timestamp + "view"}"""
+                          ON CREATE SET ${Prop.UserId + userId of "view"},
+                                        ${Prop.Timestamp + timestamp of "view"}"""
 
         Query.result(query) { result =>
             ()
@@ -127,8 +127,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.User} {${Prop.UserId + target}})
                           MERGE (a)-[follow:${Arrow.Follow}]->(b)
-                          ON CREATE SET ${Prop.UserId + userId + "follow"},
-                                        ${Prop.Timestamp + timestamp + "follow"}"""
+                          ON CREATE SET ${Prop.UserId + userId of "follow"},
+                                        ${Prop.Timestamp + timestamp of "follow"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
@@ -152,8 +152,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
                                 (b:${Label.User} {${Prop.UserId + target}})
                           MERGE (a)-[block:${Arrow.Block}]->(b)
-                          ON CREATE SET ${Prop.UserId + userId + "block"},
-                                        ${Prop.Timestamp + timestamp + "block"}"""
+                          ON CREATE SET ${Prop.UserId + userId of "block"},
+                                        ${Prop.Timestamp + timestamp of "block"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
