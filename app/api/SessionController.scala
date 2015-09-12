@@ -19,7 +19,7 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
     def login = Action.async(parse.json) { request =>
         val name = (request.body \ "name").as[String]
         val provided = (request.body \ "password").as[String]
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserName + name}}) RETURN a.${Prop.UserPassword}, a.${Prop.UserId}"""
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserName =:= name}}) RETURN a.${Prop.UserPassword}, a.${Prop.UserId}"""
         val getUserId = Query.result(query) { result =>
             if (result.hasNext) {
                 val record = result.next()
