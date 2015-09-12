@@ -2,6 +2,7 @@ package model
 
 import neo.NeoValue
 import neo.NeoValueWrites
+import neo.PropertyReader
 
 import play.api.mvc._
 import play.api.libs.json._
@@ -17,14 +18,20 @@ object BlockId {
         def write(v: BlockId) = NeoValue(v.key)
     }
 
+    implicit object BlockIdReader extends PropertyReader[BlockId] {
+        def read(v: AnyRef) = BlockId(implicitly[PropertyReader[String]].read(v))
+    }
+
     implicit val blockIdFormat = new Format[BlockId] {
         def reads(json: JsValue) = JsSuccess(BlockId(json.as[String]))
         def writes(id: BlockId) = JsString(id.key)
     }
+
     implicit val pathBinder = new PathBindable[BlockId] {
         override def bind(key: String, value: String): Either[String, BlockId] = Right(BlockId(value))
         override def unbind(key: String, blockId: BlockId): String = blockId.key
     }
+
     implicit val queryStringBinder = new QueryStringBindable[Seq[BlockId]] {
         override def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, Seq[BlockId]]] =
             params.get(key).map(ids => Right(ids.map(apply)))

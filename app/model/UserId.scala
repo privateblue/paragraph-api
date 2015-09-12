@@ -2,6 +2,7 @@ package model
 
 import neo.NeoValue
 import neo.NeoValueWrites
+import neo.PropertyReader
 
 import redis.ByteStringSerializer
 import redis.ByteStringDeserializer
@@ -18,6 +19,10 @@ case class UserId(val key: String) extends Id[String] {
 object UserId {
     implicit object UserIdWrites extends NeoValueWrites[UserId] {
         def write(v: UserId) = NeoValue(v.key)
+    }
+
+    implicit object UserIdReader extends PropertyReader[UserId] {
+        def read(v: AnyRef) = UserId(implicitly[PropertyReader[String]].read(v))
     }
 
     implicit val userIdFormat = new Format[UserId] {

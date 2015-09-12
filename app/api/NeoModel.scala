@@ -9,15 +9,17 @@ object NeoModel {
     }
 
     object Prop {
-        val Timestamp = neo.Property("timestamp")
-        val BlockId = neo.Property("blockId")
-        val BlockTitle = neo.Property("title")
-        val BlockBody = neo.Property("body")
-        val BlockBodyType = neo.Property("bodyType")
-        val UserId = neo.Property("userId")
-        val UserForeignId = neo.Property("foreignId")
-        val UserName = neo.Property("name")
-        val UserPassword = neo.Property("password")
+        val Timestamp = neo.Property[Long]("timestamp")
+        val BlockId = neo.Property[BlockId]("blockId")
+        val BlockTitle = neo.Property[String]("title")
+        val BlockBodyLabel = neo.Property[String]("bodyType")
+        val BlockBody = neo.Property[BlockBody]("body")
+        val TextBody = neo.Property[Text](BlockBody.name)
+        val ImageBody = neo.Property[Image](BlockBody.name)
+        val UserId = neo.Property[UserId]("userId")
+        val UserForeignId = neo.Property[String]("foreignId")
+        val UserName = neo.Property[String]("name")
+        val UserPassword = neo.Property[String]("password")
     }
 
     object Arrow {

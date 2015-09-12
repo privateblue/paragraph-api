@@ -21,11 +21,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val password = (body \ "password").as[String]
         val hash = BCrypt.hashpw(password, BCrypt.gensalt)
         val userId = UserId(IdGenerator.key)
-        val query = neo"""CREATE (a:${Label.User} {${Prop.UserId + userId},
-                                                   ${Prop.Timestamp + timestamp},
-                                                   ${Prop.UserForeignId + foreignId},
-                                                   ${Prop.UserName + name},
-                                                   ${Prop.UserPassword + hash}})"""
+        val query = neo"""CREATE (a:${Label.User} {${Prop.UserId =:= userId},
+                                                   ${Prop.Timestamp =:= timestamp},
+                                                   ${Prop.UserForeignId =:= foreignId},
+                                                   ${Prop.UserName =:= name},
+                                                   ${Prop.UserPassword =:= hash}})"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) userId
@@ -37,13 +37,13 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})
-                          MERGE (a)-[:${Arrow.Author} {${Prop.UserId + userId},
-                                                       ${Prop.Timestamp + timestamp}}]->(b:${Label.Block} {${Prop.BlockId + blockId},
-                                                                                                           ${Prop.Timestamp + timestamp},
-                                                                                                           ${Prop.BlockTitle + title},
-                                                                                                           ${Prop.BlockBodyType + blockBody.bodyType},
-                                                                                                           ${Prop.BlockBody + blockBody}})"""
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})
+                          MERGE (a)-[:${Arrow.Author} {${Prop.UserId =:= userId},
+                                                       ${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
+                                                                                                           ${Prop.Timestamp =:= timestamp},
+                                                                                                           ${Prop.BlockTitle =:= title},
+                                                                                                           ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                           ${Prop.BlockBody =:= blockBody}})"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
@@ -56,15 +56,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
-                                (b:${Label.Block} {${Prop.BlockId + target}})
-                          MERGE (b)-[:${Arrow.Link} {${Prop.UserId + userId},
-                                                     ${Prop.Timestamp + timestamp}}]->(c:${Label.Block} {${Prop.BlockId + blockId},
-                                                                                                         ${Prop.Timestamp + timestamp},
-                                                                                                         ${Prop.BlockTitle + title},
-                                                                                                         ${Prop.BlockBodyType + blockBody.bodyType},
-                                                                                                         ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
-                                                                                                                                                             ${Prop.Timestamp + timestamp}}]-(a)"""
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
+                                (b:${Label.Block} {${Prop.BlockId =:= target}})
+                          MERGE (b)-[:${Arrow.Link} {${Prop.UserId =:= userId},
+                                                     ${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
+                                                                                                         ${Prop.Timestamp =:= timestamp},
+                                                                                                         ${Prop.BlockTitle =:= title},
+                                                                                                         ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                         ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
+                                                                                                                                                             ${Prop.Timestamp =:= timestamp}}]-(a)"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
@@ -77,15 +77,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
-                                (b:${Label.Block} {${Prop.BlockId + target}})
-                          MERGE (b)<-[:${Arrow.Link} {${Prop.UserId + userId},
-                                                      ${Prop.Timestamp + timestamp}}]-(c:${Label.Block} {${Prop.BlockId + blockId},
-                                                                                                         ${Prop.Timestamp + timestamp},
-                                                                                                         ${Prop.BlockTitle + title},
-                                                                                                         ${Prop.BlockBodyType + blockBody.bodyType},
-                                                                                                         ${Prop.BlockBody + blockBody}})<-[:${Arrow.Author} {${Prop.UserId + userId},
-                                                                                                                                                             ${Prop.Timestamp + timestamp}}]-(a)"""
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
+                                (b:${Label.Block} {${Prop.BlockId =:= target}})
+                          MERGE (b)<-[:${Arrow.Link} {${Prop.UserId =:= userId},
+                                                      ${Prop.Timestamp =:= timestamp}}]-(c:${Label.Block} {${Prop.BlockId =:= blockId},
+                                                                                                         ${Prop.Timestamp =:= timestamp},
+                                                                                                         ${Prop.BlockTitle =:= title},
+                                                                                                         ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                         ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
+                                                                                                                                                             ${Prop.Timestamp =:= timestamp}}]-(a)"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
@@ -96,11 +96,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
     def link = Paragraph.authenticated { (userId, timestamp, body) =>
         val from = (body \ "from").as[BlockId]
         val to = (body \ "to").as[BlockId]
-        val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId + from}}),
-                                (b:${Label.Block} {${Prop.BlockId + to}})
+        val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId =:= from}}),
+                                (b:${Label.Block} {${Prop.BlockId =:= to}})
                           MERGE (a)-[link:${Arrow.Link}]->(b)
-                          ON CREATE SET ${Prop.UserId + userId of "link"},
-                                        ${Prop.Timestamp + timestamp of "link"}"""
+                          ON CREATE SET ${Prop.UserId =:= userId of "link"},
+                                        ${Prop.Timestamp =:= timestamp of "link"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
@@ -110,12 +110,12 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
     def view = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
-                                (b:${Label.Block} {${Prop.BlockId + target}})
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
+                                (b:${Label.Block} {${Prop.BlockId =:= target}})
                           WHERE NOT (a)-[:${Arrow.Author}]->(b)
                           MERGE (a)-[view:${Arrow.View}]->(b)
-                          ON CREATE SET ${Prop.UserId + userId of "view"},
-                                        ${Prop.Timestamp + timestamp of "view"}"""
+                          ON CREATE SET ${Prop.UserId =:= userId of "view"},
+                                        ${Prop.Timestamp =:= timestamp of "view"}"""
 
         Query.result(query) { result =>
             ()
@@ -124,11 +124,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
     def follow = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
-                                (b:${Label.User} {${Prop.UserId + target}})
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
+                                (b:${Label.User} {${Prop.UserId =:= target}})
                           MERGE (a)-[follow:${Arrow.Follow}]->(b)
-                          ON CREATE SET ${Prop.UserId + userId of "follow"},
-                                        ${Prop.Timestamp + timestamp of "follow"}"""
+                          ON CREATE SET ${Prop.UserId =:= userId of "follow"},
+                                        ${Prop.Timestamp =:= timestamp of "follow"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
@@ -138,7 +138,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
     def unfollow = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})-[r:${Arrow.Follow}]->(b:${Label.User} {${Prop.UserId + target}})
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Follow}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
         Query.result(query) { result =>
@@ -149,11 +149,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
     def block = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}}),
-                                (b:${Label.User} {${Prop.UserId + target}})
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
+                                (b:${Label.User} {${Prop.UserId =:= target}})
                           MERGE (a)-[block:${Arrow.Block}]->(b)
-                          ON CREATE SET ${Prop.UserId + userId of "block"},
-                                        ${Prop.Timestamp + timestamp of "block"}"""
+                          ON CREATE SET ${Prop.UserId =:= userId of "block"},
+                                        ${Prop.Timestamp =:= timestamp of "block"}"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
@@ -163,7 +163,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
 
     def unblock = Paragraph.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId + userId}})-[r:${Arrow.Block}]->(b:${Label.User} {${Prop.UserId + target}})
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Block}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
         Query.result(query) { result =>

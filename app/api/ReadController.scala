@@ -21,80 +21,69 @@ class ReadController @javax.inject.Inject() (implicit global: Global) extends Co
         Query.lift { db =>
             blockIds.foldLeft(List.empty[Block]) {
                 case (Nil, id) =>
-                    val first = Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying)).getOrElse(throw ApiError(404, s"Block $id not found"))
-                    nodeToBlock(first)::Nil
+                    val block = for {
+                        first <- Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying))
+                        b <- nodeToBlock(first)
+                    } yield b
+                    block.map(_::Nil).getOrElse(throw ApiError(404, s"Block $id not found"))
                 case (path, id) =>
                     if (path.head.outgoing.exists(c => c.blockId == id && c.connection.arrow == Arrow.Link)) {
-                        val res = db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying)
-                        val next = Option(res).getOrElse(throw ApiError(404, s"Block $id not found"))
-                        nodeToBlock(next)::path
+                        val block = for {
+                            next <- Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying))
+                            b <- nodeToBlock(next)
+                        } yield b
+                        block.map(_::path).getOrElse(throw ApiError(404, s"Block $id not found"))
                     } else throw ApiError(404, s"""Path from ${path.map(_.blockId).reverse.mkString("-->")} to $id not found""")
             }.reverse
         }
     }
 
-    // TODO validation if all properties are present
-    private def relationshipToConnection(rel: Relationship) = Connection(
-        userId = UserId(rel.getProperty(Prop.UserId.name).asInstanceOf[String]),
-        timestamp = rel.getProperty(Prop.Timestamp.name).asInstanceOf[Long],
-        arrow = neo.Arrow(rel.getType.name)
-    )
-
-    // TODO validation if node is really a user node with all properties present
-    private def nodeToUser(node: Node) = User(
-        userId = UserId(node.getProperty(Prop.UserId.name).asInstanceOf[String]),
-        timestamp = node.getProperty(Prop.Timestamp.name).asInstanceOf[Long],
-        foreignId = node.getProperty(Prop.UserForeignId.name).asInstanceOf[String],
-        name = node.getProperty(Prop.UserName.name).asInstanceOf[String]
-    )
-
-    // TODO validation if node is really a block node with all properties present
-    private def nodeToBlock(node: Node) = Block(
-        blockId = BlockId(node.getProperty(Prop.BlockId.name).asInstanceOf[String]),
-        title = \/.fromTryCatchNonFatal {
-            node.getProperty(Prop.BlockTitle.name).asInstanceOf[String]
-        }.toOption,
-        timestamp = node.getProperty(Prop.Timestamp.name).asInstanceOf[Long],
-        body = {
-            val bodyType = node.getProperty(Prop.BlockBodyType.name).asInstanceOf[String]
-            bodyType match {
-                case BlockBody.Type.text =>
-                    Text(node.getProperty(Prop.BlockBody.name).asInstanceOf[String])
-                case BlockBody.Type.image =>
-                    Image(node.getProperty(Prop.BlockBody.name).asInstanceOf[String])
-            }
-        },
-        author = {
-            // TODO null check
-            val rel = node.getSingleRelationship(Arrow.Author, Direction.INCOMING)
-            nodeToUser(rel.getStartNode)
-        },
-        incoming = {
-            node.getRelationships(Direction.INCOMING)
-                .filter(_.getOtherNode(node).getLabels.toSeq.contains(Label.Block))
-                .map { rel =>
-                    val connection = relationshipToConnection(rel)
-                    val other = rel.getStartNode
-                    val otherId = BlockId(other.getProperty(Prop.BlockId.name).asInstanceOf[String])
-                    BlockConnection(connection, otherId)
+    private def nodeToBlock(node: Node): Option[Block] =
+        if (node.getLabels.toSeq.contains(Label.Block))
+            for {
+                blockId <- Prop.BlockId from node
+                title = Prop.BlockTitle from node
+                timestamp <- Prop.Timestamp from node
+                bodyLabel <- Prop.BlockBodyLabel from node
+                body <- bodyLabel match {
+                    case BlockBody.Label.text => Prop.TextBody from node
+                    case BlockBody.Label.image => Prop.ImageBody from node
                 }
-                .toSeq
-        },
-        outgoing = {
-            node.getRelationships(Direction.OUTGOING)
-                .filter(_.getOtherNode(node).getLabels.toSeq.contains(Label.Block))
-                .map { rel =>
-                    val connection = relationshipToConnection(rel)
-                    val other = rel.getEndNode
-                    val otherId = BlockId(other.getProperty(Prop.BlockId.name).asInstanceOf[String])
-                    BlockConnection(connection, otherId)
-                }
-                .toSeq
-        },
-        seen = {
-            node.getRelationships(Direction.INCOMING, Arrow.View)
-                .map(relationshipToConnection)
-                .toSeq
-        }
-    )
+                authorArrow <- Option(node.getSingleRelationship(Arrow.Author, Direction.INCOMING))
+                author <- nodeToUser(authorArrow.getStartNode)
+                incoming = parentBlocks(node)
+                outgoing = childBlocks(node)
+                seen = node.getRelationships(Direction.INCOMING, Arrow.View).flatMap(relationshipToConnection).toSeq
+            } yield Block(blockId, title, timestamp, body, author, incoming, outgoing, seen)
+        else None
+
+    private def nodeToUser(node: Node): Option[User] =
+        if (node.getLabels.toSeq.contains(Label.User))
+            for {
+                userId <- Prop.UserId from node
+                timestamp <- Prop.Timestamp from node
+                foreignId <- Prop.UserForeignId from node
+                name <- Prop.UserName from node
+            } yield User(userId, timestamp, foreignId, name)
+        else None
+
+    private def parentBlocks(node: Node): Seq[BlockConnection] =
+        connectingBlocks(node, Direction.INCOMING)
+
+    private def childBlocks(node: Node): Seq[BlockConnection] =
+        connectingBlocks(node, Direction.OUTGOING)
+
+    private def connectingBlocks(node: Node, dir: Direction): Seq[BlockConnection] = for {
+        rel <- node.getRelationships(dir).filter(_.getOtherNode(node).getLabels.toSeq.contains(Label.Block)).toSeq
+        connection <- relationshipToConnection(rel)
+        other = rel.getOtherNode(node)
+        otherId <- Prop.BlockId from other
+    } yield BlockConnection(connection, otherId)
+
+    private def relationshipToConnection(rel: Relationship): Option[Connection] = for {
+        userId <- Prop.UserId from rel
+        timestamp <- Prop.Timestamp from rel
+        arrow = neo.Arrow(rel.getType)
+    } yield Connection(userId, timestamp, arrow)
+
 }
