@@ -30,7 +30,7 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
     val neo = Env(
         dbPath = config.neoPath,
         logger = logger,
-        executionContext = system.dispatchers.lookup("neo-dispatcher")
+        executionContext = system.dispatchers.lookup("neo.dispatcher")
     )
 
     import NeoModel._
