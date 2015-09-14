@@ -1,4 +1,6 @@
-package api
+package api.read
+
+import api.base.Actions
 
 import model.base.UserId
 
@@ -11,14 +13,14 @@ import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
 object Reader {
-    def authenticated[T: Writes](fn: UserId => Query.Exec[T])(implicit global: Global) =
+    def authenticated[T: Writes](fn: UserId => Query.Exec[T])(implicit global: api.Global) =
         Actions.authenticate(parse.empty) { (request, userId) =>
             val exec = fn(userId)
             val action = public(exec)
             action(request)
         }
 
-    def public[T: Writes](exec: => Query.Exec[T])(implicit global: Global) =
+    def public[T: Writes](exec: => Query.Exec[T])(implicit global: api.Global) =
         Action.async(parse.empty) { request =>
             global.neo.run(exec)
                 .map(v => Actions.envelope(v))

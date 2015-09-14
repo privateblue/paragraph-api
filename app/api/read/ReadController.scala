@@ -1,4 +1,6 @@
-package api
+package api.read
+
+import api.base.ApiError
 
 import model.base._
 import model.read._
@@ -15,8 +17,8 @@ import scalaz._
 
 import scala.collection.JavaConversions._
 
-class ReadController @javax.inject.Inject() (implicit global: Global) extends Controller {
-    import NeoModel._
+class ReadController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
+    import api.base.NeoModel._
 
     def path(blockIds: Seq[BlockId]) = Reader.public {
         Query.lift { db =>

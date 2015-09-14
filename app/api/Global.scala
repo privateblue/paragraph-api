@@ -1,5 +1,8 @@
 package api
 
+import api.base.Config
+import api.session.Sessions
+
 import neo._
 
 import org.slf4j.LoggerFactory
@@ -33,7 +36,7 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
         executionContext = system.dispatchers.lookup("neo.dispatcher")
     )
 
-    import NeoModel._
+    import api.base.NeoModel._
     val init = for {
         _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserForeignId} IS UNIQUE")
         _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserName} IS UNIQUE")

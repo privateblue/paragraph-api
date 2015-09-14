@@ -1,4 +1,7 @@
-package api
+package api.paragraph
+
+import api._
+import api.base.IdGenerator
 
 import model.base._
 
@@ -12,8 +15,8 @@ import org.mindrot.jbcrypt.BCrypt
 import play.api.mvc._
 import play.api.libs.json._
 
-class ParagraphController @javax.inject.Inject() (implicit global: Global) extends Controller {
-    import NeoModel._
+class ParagraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
+    import api.base.NeoModel._
 
     def register = Paragraph.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]

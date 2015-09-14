@@ -1,4 +1,4 @@
-package api
+package api.base
 
 import scala.util.control.NoStackTrace
 

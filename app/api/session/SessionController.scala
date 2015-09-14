@@ -1,4 +1,8 @@
-package api
+package api.session
+
+import api._
+import api.base.Actions
+import api.base.ApiError
 
 import model.base._
 
@@ -13,8 +17,8 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.collection.JavaConversions._
 import scala.concurrent.Future
 
-class SessionController @javax.inject.Inject() (implicit global: Global) extends Controller {
-    import NeoModel._
+class SessionController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
+    import api.base.NeoModel._
 
     def login = Action.async(parse.json) { request =>
         val name = (request.body \ "name").as[String]

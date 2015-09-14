@@ -1,4 +1,4 @@
-package api
+package api.base
 
 import model.base.UserId
 
@@ -22,7 +22,7 @@ object Actions {
         new Status(code)(body.toString)
     }
 
-    def authenticate[T](bp: BodyParser[T])(fn: (Request[T], UserId) => Future[Result])(implicit global: Global) =
+    def authenticate[T](bp: BodyParser[T])(fn: (Request[T], UserId) => Future[Result])(implicit global: api.Global) =
         Action.async(bp) { request =>
             val token = request.queryString.get("token").flatMap(_.headOption)
             token match {

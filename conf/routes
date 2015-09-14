@@ -1,15 +1,15 @@
-POST    /register   @api.ParagraphController.register
-POST    /start      @api.ParagraphController.start
-POST    /append     @api.ParagraphController.append
-POST    /prepend    @api.ParagraphController.prepend
-POST    /link       @api.ParagraphController.link
-POST    /view       @api.ParagraphController.view
-POST    /follow     @api.ParagraphController.follow
-POST    /unfollow   @api.ParagraphController.unfollow
-POST    /block      @api.ParagraphController.block
-POST    /unblock    @api.ParagraphController.unblock
+POST    /register   @api.paragraph.ParagraphController.register
+POST    /start      @api.paragraph.ParagraphController.start
+POST    /append     @api.paragraph.ParagraphController.append
+POST    /prepend    @api.paragraph.ParagraphController.prepend
+POST    /link       @api.paragraph.ParagraphController.link
+POST    /view       @api.paragraph.ParagraphController.view
+POST    /follow     @api.paragraph.ParagraphController.follow
+POST    /unfollow   @api.paragraph.ParagraphController.unfollow
+POST    /block      @api.paragraph.ParagraphController.block
+POST    /unblock    @api.paragraph.ParagraphController.unblock
 
-POST    /login      @api.SessionController.login
-POST    /logout     @api.SessionController.logout
+POST    /login      @api.session.SessionController.login
+POST    /logout     @api.session.SessionController.logout
 
-GET     /path       @api.ReadController.path(blockIds: Seq[BlockId])
+GET     /path       @api.read.ReadController.path(blockIds: Seq[BlockId])
