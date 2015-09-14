@@ -1,4 +1,6 @@
-package model.base
+package model.session
+
+import model.base.UserId
 
 import play.api.libs.json._
 
