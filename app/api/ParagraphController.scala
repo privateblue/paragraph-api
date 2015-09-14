@@ -40,10 +40,10 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})
                           MERGE (a)-[:${Arrow.Author} {${Prop.UserId =:= userId},
                                                        ${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
-                                                                                                           ${Prop.Timestamp =:= timestamp},
-                                                                                                           ${Prop.BlockTitle =:= title},
-                                                                                                           ${Prop.BlockBodyLabel =:= blockBody.label},
-                                                                                                           ${Prop.BlockBody =:= blockBody}})"""
+                                                                                                             ${Prop.Timestamp =:= timestamp},
+                                                                                                             ${Prop.BlockTitle =:= title},
+                                                                                                             ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                             ${Prop.BlockBody =:= blockBody}})"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
@@ -60,11 +60,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                                 (b:${Label.Block} {${Prop.BlockId =:= target}})
                           MERGE (b)-[:${Arrow.Link} {${Prop.UserId =:= userId},
                                                      ${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
-                                                                                                         ${Prop.Timestamp =:= timestamp},
-                                                                                                         ${Prop.BlockTitle =:= title},
-                                                                                                         ${Prop.BlockBodyLabel =:= blockBody.label},
-                                                                                                         ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
-                                                                                                                                                             ${Prop.Timestamp =:= timestamp}}]-(a)"""
+                                                                                                           ${Prop.Timestamp =:= timestamp},
+                                                                                                           ${Prop.BlockTitle =:= title},
+                                                                                                           ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
+                                                                                                                                                                 ${Prop.Timestamp =:= timestamp}}]-(a)"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
@@ -81,11 +81,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: Global) exten
                                 (b:${Label.Block} {${Prop.BlockId =:= target}})
                           MERGE (b)<-[:${Arrow.Link} {${Prop.UserId =:= userId},
                                                       ${Prop.Timestamp =:= timestamp}}]-(c:${Label.Block} {${Prop.BlockId =:= blockId},
-                                                                                                         ${Prop.Timestamp =:= timestamp},
-                                                                                                         ${Prop.BlockTitle =:= title},
-                                                                                                         ${Prop.BlockBodyLabel =:= blockBody.label},
-                                                                                                         ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
-                                                                                                                                                             ${Prop.Timestamp =:= timestamp}}]-(a)"""
+                                                                                                           ${Prop.Timestamp =:= timestamp},
+                                                                                                           ${Prop.BlockTitle =:= title},
+                                                                                                           ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
+                                                                                                                                                                 ${Prop.Timestamp =:= timestamp}}]-(a)"""
 
         Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
