@@ -1,4 +1,6 @@
-package model
+package model.read
+
+import model.base._
 
 import play.api.libs.json._
 

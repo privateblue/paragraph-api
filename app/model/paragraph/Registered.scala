@@ -1,4 +1,6 @@
-package model
+package model.paragraph
+
+import model.base._
 
 import play.api.libs.json._
 

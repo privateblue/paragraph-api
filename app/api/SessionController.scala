@@ -1,6 +1,6 @@
 package api
 
-import model._
+import model.base._
 
 import neo._
 
@@ -33,7 +33,7 @@ class SessionController @javax.inject.Inject() (implicit global: Global) extends
         val getToken = for {
             userId <- global.neo.run(getUserId)
             token <- global.sessions.start(userId, global.config.sessionExpire)
-        } yield Ok(Json.obj("data" -> model.Session(userId = userId, token = token, name = name)).toString)
+        } yield Ok(Json.obj("data" -> model.base.Session(userId = userId, token = token, name = name)).toString)
 
         getToken.recover {
             case e: Throwable => Actions.renderError(e)

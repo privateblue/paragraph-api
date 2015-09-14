@@ -1,6 +1,7 @@
 package api
 
-import model._
+import model.base._
+import model.read._
 
 import neo._
 

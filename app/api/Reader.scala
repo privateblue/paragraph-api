@@ -1,6 +1,6 @@
 package api
 
-import model.UserId
+import model.base.UserId
 
 import neo.Query
 
