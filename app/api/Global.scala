@@ -4,6 +4,9 @@ import api.base.Config
 import api.session.Sessions
 
 import neo._
+import neo.{Env => NeoEnv}
+
+import redis.{Env => RedisEnv}
 
 import org.slf4j.LoggerFactory
 
@@ -28,12 +31,18 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
 
     val logger = LoggerFactory.getLogger("Neo")
 
-    val sessions = Sessions(config)
-
-    val neo = Env(
+    val neo = NeoEnv(
         dbPath = config.neoPath,
         logger = logger,
         executionContext = system.dispatchers.lookup("neo.dispatcher")
+    )
+
+    val redis = RedisEnv(
+        host = config.redisHost,
+        port = config.redisPort,
+        password = config.redisPassword,
+        logger = logger,
+        system = ActorSystem("redis")
     )
 
     import api.base.NeoModel._

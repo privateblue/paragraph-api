@@ -1,6 +1,7 @@
 package api.paragraph
 
 import api._
+import api.base.Actions
 import api.base.IdGenerator
 
 import model.base._
@@ -18,7 +19,7 @@ import play.api.libs.json._
 class ParagraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
 
-    def register = Paragraph.public { (timestamp, body) =>
+    def register = Actions.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]
         val name = (body \ "name").as[String]
         val password = (body \ "password").as[String]
@@ -30,13 +31,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                    ${Prop.UserName =:= name},
                                                    ${Prop.UserPassword =:= hash}})"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) userId
             else throw NeoException(s"User $name has not been created")
         }
+
+        global.neo.run(exec)
     }
 
-    def start = Paragraph.authenticated { (userId, timestamp, body) =>
+    def start = Actions.authenticated { (userId, timestamp, body) =>
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
@@ -48,13 +51,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                              ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                              ${Prop.BlockBody =:= blockBody}})"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
             else throw NeoException("Block has not been created")
         }
+
+        global.neo.run(exec)
     }
 
-    def append = Paragraph.authenticated { (userId, timestamp, body) =>
+    def append = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
@@ -69,13 +74,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
                                                                                                                                                                  ${Prop.Timestamp =:= timestamp}}]-(a)"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
             else throw NeoException("Append failed")
         }
+
+        global.neo.run(exec)
     }
 
-    def prepend = Paragraph.authenticated { (userId, timestamp, body) =>
+    def prepend = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
@@ -90,13 +97,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
                                                                                                                                                                  ${Prop.Timestamp =:= timestamp}}]-(a)"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) blockId
             else throw NeoException("Prepend failed")
         }
+
+        global.neo.run(exec)
     }
 
-    def link = Paragraph.authenticated { (userId, timestamp, body) =>
+    def link = Actions.authenticated { (userId, timestamp, body) =>
         val from = (body \ "from").as[BlockId]
         val to = (body \ "to").as[BlockId]
         val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId =:= from}}),
@@ -105,13 +114,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "link"},
                                         ${Prop.Timestamp =:= timestamp of "link"}"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
             else throw NeoException("Already linked")
         }
+
+        global.neo.run(exec)
     }
 
-    def view = Paragraph.authenticated { (userId, timestamp, body) =>
+    def view = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.Block} {${Prop.BlockId =:= target}})
@@ -120,12 +131,14 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "view"},
                                         ${Prop.Timestamp =:= timestamp of "view"}"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             ()
         }
+
+        global.neo.run(exec)
     }
 
-    def follow = Paragraph.authenticated { (userId, timestamp, body) =>
+    def follow = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.User} {${Prop.UserId =:= target}})
@@ -133,24 +146,28 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "follow"},
                                         ${Prop.Timestamp =:= timestamp of "follow"}"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
             else throw NeoException("Already followed")
         }
+
+        global.neo.run(exec)
     }
 
-    def unfollow = Paragraph.authenticated { (userId, timestamp, body) =>
+    def unfollow = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Follow}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
             else throw NeoException("Unfollow has not been successful")
         }
+
+        global.neo.run(exec)
     }
 
-    def block = Paragraph.authenticated { (userId, timestamp, body) =>
+    def block = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.User} {${Prop.UserId =:= target}})
@@ -158,21 +175,25 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "block"},
                                         ${Prop.Timestamp =:= timestamp of "block"}"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
             else throw NeoException("Already blocked")
         }
+
+        global.neo.run(exec)
     }
 
-    def unblock = Paragraph.authenticated { (userId, timestamp, body) =>
+    def unblock = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Block}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
-        Query.result(query) { result =>
+        val exec = Query.result(query) { result =>
             if (result.getQueryStatistics.containsUpdates) ()
             else throw NeoException("Unblocking has not been successful")
         }
+
+        global.neo.run(exec)
     }
 
 }

@@ -1,5 +1,6 @@
 package api.read
 
+import api.base.Actions
 import api.base.ApiError
 
 import model.base._
@@ -20,8 +21,8 @@ import scala.collection.JavaConversions._
 class ReadController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
 
-    def path(blockIds: Seq[BlockId]) = Reader.public {
-        Query.lift { db =>
+    def path(blockIds: Seq[BlockId]) = Actions.public(parse.empty) { (_, _) =>
+        val exec = Query.lift { db =>
             blockIds.foldLeft(List.empty[Block]) {
                 case (Nil, id) =>
                     val block = for {
@@ -39,6 +40,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
                     } else throw ApiError(404, s"""Path from ${path.map(_.blockId).reverse.mkString("-->")} to $id not found""")
             }.reverse
         }
+        global.neo.run(exec)
     }
 
     private def nodeToBlock(node: Node): Option[Block] =

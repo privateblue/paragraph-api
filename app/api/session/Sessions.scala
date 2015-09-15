@@ -6,39 +6,36 @@ import api.base.IdGenerator
 
 import model.base.UserId
 
-import redis.RedisClient
+import redis.Command
 
-import akka.actor.ActorSystem
+import scalaz._
+import Scalaz._
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
-case class Sessions(config: Config)(implicit system: ActorSystem) {
-    private val redis = RedisClient(config.redisHost, config.redisPort, config.redisPassword)
-
-    def get(token: String)(implicit ec: ExecutionContext): Future[UserId] =
+object Sessions {
+    def get(token: String)(implicit ec: ExecutionContext) = Command { redis =>
         redis.get[UserId](token).map {
             case Some(id) => id
             case _ => throw ApiError(401, "User not found")
         }
-
-    def start(userId: UserId, expire: Long = 0)(implicit ec: ExecutionContext): Future[String] = {
-        redis.get[String](userId.toString).flatMap {
-            case Some(token) =>
-                get(token)
-                    .map(_ => token)
-                    .recoverWith {
-                        case ApiError(_, _) => for {
-                            _ <- remove(token)
-                            newToken <- generate(userId, expire)
-                        } yield newToken
-                    }
-            case _ =>
-                generate(userId, expire)
-        }
     }
 
-    def generate(userId: UserId, expire: Long = 0)(implicit ec: ExecutionContext): Future[String] = {
+    def start(userId: UserId, expire: Long = 0)(implicit ec: ExecutionContext) = for {
+        getToken <- Command { redis =>
+            (for {
+                token <- OptionT[Future, String](redis.get[String](userId.toString))
+                _ <- OptionT[Future, UserId](redis.get[UserId](token))
+            } yield token).run
+        }
+        token <- getToken.map(_.point[Command.Exec]).getOrElse(for {
+            _ <- remove(userId)
+            newToken <- generate(userId, expire)
+        } yield newToken)
+    } yield token
+
+    def generate(userId: UserId, expire: Long = 0)(implicit ec: ExecutionContext) = Command { redis =>
         val token = IdGenerator.key
         for {
             s1 <- redis.set[String](userId.toString, token, if (expire == 0) None else Some(expire))
@@ -48,9 +45,11 @@ case class Sessions(config: Config)(implicit system: ActorSystem) {
             else throw ApiError(503, "Unable to create session")
     }
 
-    def remove(token: String)(implicit ec: ExecutionContext): Future[Unit] = for {
-        userId <- redis.get[UserId](token)
-        _ <- userId.map(id => redis.del(id.toString)).getOrElse(Future.successful(()))
-        _ <- redis.del(token)
-    } yield ()
+    def remove(userId: UserId)(implicit ec: ExecutionContext) = Command { redis =>
+        for {
+            token <- redis.get[String](userId.toString)
+            _ <- redis.del(userId.toString)
+            _ <- token.map(t => redis.del(t)).getOrElse(Future.successful(()))
+        } yield ()
+    }
 }
