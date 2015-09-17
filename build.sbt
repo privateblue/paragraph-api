@@ -7,6 +7,7 @@ libraryDependencies ++= Seq(
     "org.neo4j" % "neo4j" % "2.3.0-M02",
     "org.neo4j" % "neo4j-slf4j" % "2.3.0-M02",
     "ch.qos.logback" % "logback-classic" % "1.1.3",
+    "org.slf4j" % "log4j-over-slf4j" % "1.7.12",
     "com.etaty.rediscala" %% "rediscala" % "1.4.0",
     "org.mindrot" % "jbcrypt" % "0.3m",
     "com.fasterxml.uuid" % "java-uuid-generator" % "3.1.3",
