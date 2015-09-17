@@ -61,6 +61,9 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
     Await.ready(runInit, Duration.Inf)
 
     lifecycle.addStopHook { () =>
-        neo.shutdown()
+        for {
+            _ <- neo.shutdown()
+            _ <- redis.shutdown()
+        } yield ()
     }
 }

@@ -21,4 +21,8 @@ case class Env(
                 logger.error(e.getMessage)
                 throw e
         } (system.dispatcher)
+
+    def shutdown(): Future[Unit] = Future {
+        system.shutdown()
+    } (system.dispatcher)
 }
