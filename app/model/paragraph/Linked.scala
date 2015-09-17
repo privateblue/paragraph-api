@@ -7,7 +7,7 @@ import play.api.libs.json._
 case class Linked(
     userId: UserId,
     timestamp: Long,
-    form: BlockId,
+    from: BlockId,
     to: BlockId
 )
 

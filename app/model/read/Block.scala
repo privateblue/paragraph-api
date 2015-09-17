@@ -12,7 +12,7 @@ case class Block(
     author: User,
     incoming: Seq[BlockConnection],
     outgoing: Seq[BlockConnection],
-    seen: Seq[Connection]
+    views: Seq[Connection]
 )
 
 object Block {

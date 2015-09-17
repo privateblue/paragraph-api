@@ -58,8 +58,8 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
                 author <- nodeToUser(authorArrow.getStartNode)
                 incoming = parentBlocks(node)
                 outgoing = childBlocks(node)
-                seen = node.getRelationships(Direction.INCOMING, Arrow.View).flatMap(relationshipToConnection).toSeq
-            } yield Block(blockId, title, timestamp, body, author, incoming, outgoing, seen)
+                views = node.getRelationships(Direction.INCOMING, Arrow.View).flatMap(relationshipToConnection).toSeq
+            } yield Block(blockId, title, timestamp, body, author, incoming, outgoing, views)
         else None
 
     private def nodeToUser(node: Node): Option[User] =
