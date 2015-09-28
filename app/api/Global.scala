@@ -8,6 +8,8 @@ import neo.{Env => NeoEnv}
 
 import redis.{Env => RedisEnv}
 
+import kafka.{Env => KafkaEnv}
+
 import org.slf4j.LoggerFactory
 
 import com.typesafe.config.ConfigFactory
@@ -29,11 +31,9 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
 
     val config = Config(ConfigFactory.load())
 
-    val logger = LoggerFactory.getLogger("Neo")
-
     val neo = NeoEnv(
         dbPath = config.neoPath,
-        logger = logger,
+        logger = LoggerFactory.getLogger("Neo"),
         executionContext = system.dispatchers.lookup("neo.dispatcher")
     )
 
@@ -41,8 +41,14 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
         host = config.redisHost,
         port = config.redisPort,
         password = config.redisPassword,
-        logger = logger,
+        logger = LoggerFactory.getLogger("Redis"),
         system = ActorSystem("redis")
+    )
+
+    val kafka = KafkaEnv(
+        zkConnect = config.zkConnect,
+        brokers = config.kafkaBrokers,
+        logger = LoggerFactory.getLogger("Kafka")
     )
 
     import api.base.NeoModel._
@@ -54,9 +60,9 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
     } yield ()
     val runInit =
         neo.run(init)
-            .map(_ => logger.info("Database initialized"))
+            .map(_ => neo.logger.info("Database initialized"))
             .recover {
-                case e: Throwable => logger.error(s"Database initialization failed: ${e.getMessage}")
+                case e: Throwable => neo.logger.error(s"Database initialization failed: ${e.getMessage}")
             }
     Await.ready(runInit, Duration.Inf)
 
@@ -64,6 +70,7 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
         for {
             _ <- neo.shutdown()
             _ <- redis.shutdown()
+            _ <- kafka.shutdown()
         } yield ()
     }
 }

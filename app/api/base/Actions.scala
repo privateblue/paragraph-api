@@ -7,6 +7,8 @@ import model.base.UserId
 import play.api.mvc._
 import play.api.mvc.BodyParsers._
 import play.api.mvc.Results._
+import play.api.libs.iteratee.Enumerator
+import play.api.libs.iteratee.Enumeratee
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
@@ -50,6 +52,17 @@ object Actions {
                 .recover {
                     case e: Throwable => Actions.renderError(e)
                 }
+        }
+
+    def stream[T: Writes](fn: (Long, JsValue) => Enumerator[T]): Action[JsValue] =
+        stream(parse.json)(fn)
+
+    def stream[R, T: Writes](bp: BodyParser[R])(fn: (Long, R) => Enumerator[T]): Action[R] =
+        Action(bp) { request =>
+            val timestamp = System.currentTimeMillis
+            val enumerator = fn(timestamp, request.body)
+            val jsonWriter = Enumeratee.map[T](value => implicitly[Writes[T]].writes(value).toString)
+            Ok.chunked(enumerator through jsonWriter)
         }
 
     def envelope[T: Writes](value: T) =

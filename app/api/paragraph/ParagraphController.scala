@@ -3,6 +3,7 @@ package api.paragraph
 import api._
 import api.base.Actions
 import api.base.IdGenerator
+import api.messaging.Messages
 
 import model.base._
 
@@ -15,6 +16,7 @@ import org.mindrot.jbcrypt.BCrypt
 
 import play.api.mvc._
 import play.api.libs.json._
+import play.api.libs.concurrent.Execution.Implicits._
 
 class ParagraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
@@ -36,7 +38,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException(s"User $name has not been created")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("registered", model.paragraph.Registered(userId, timestamp, foreignId, name, password))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
     def start = Actions.authenticated { (userId, timestamp, body) =>
@@ -56,7 +62,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException("Block has not been created")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("started", model.paragraph.Started(userId, timestamp, title, blockBody))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
     def append = Actions.authenticated { (userId, timestamp, body) =>
@@ -79,7 +89,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException("Append failed")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("appended", model.paragraph.Appended(userId, timestamp, target, title, blockBody))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
     def prepend = Actions.authenticated { (userId, timestamp, body) =>
@@ -102,7 +116,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException("Prepend failed")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("prepended", model.paragraph.Prepended(userId, timestamp, target, title, blockBody))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
     def link = Actions.authenticated { (userId, timestamp, body) =>
@@ -119,7 +137,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException("Already linked")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
     def view = Actions.authenticated { (userId, timestamp, body) =>
@@ -131,11 +153,14 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "view"},
                                         ${Prop.Timestamp =:= timestamp of "view"}"""
 
-        val exec = Query.result(query) { result =>
-            ()
-        }
+        val exec = Query.result(query)(_.getQueryStatistics.containsUpdates)
 
-        global.neo.run(exec)
+        for {
+            added <- global.neo.run(exec)
+            messaging = if (added) Messages.send("viewed", model.paragraph.Viewed(userId, timestamp, target))
+                        else Messages.noop
+            _ <- global.kafka.run(messaging)
+        } yield ()
     }
 
     def follow = Actions.authenticated { (userId, timestamp, body) =>
@@ -151,7 +176,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException("Already followed")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("followed", model.paragraph.Followed(userId, timestamp, target))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
     def unfollow = Actions.authenticated { (userId, timestamp, body) =>
@@ -164,7 +193,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException("Unfollow has not been successful")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("unfollowed", model.paragraph.Unfollowed(userId, timestamp, target))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
     def block = Actions.authenticated { (userId, timestamp, body) =>
@@ -180,7 +213,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException("Already blocked")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("blocked", model.paragraph.Blocked(userId, timestamp, target))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
     def unblock = Actions.authenticated { (userId, timestamp, body) =>
@@ -193,7 +230,11 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             else throw NeoException("Unblocking has not been successful")
         }
 
-        global.neo.run(exec)
+        for {
+            result <- global.neo.run(exec)
+            messaging = Messages.send("unblocked", model.paragraph.Unblocked(userId, timestamp, target))
+            _ <- global.kafka.run(messaging)
+        } yield result
     }
 
 }

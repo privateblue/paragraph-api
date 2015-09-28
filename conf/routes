@@ -9,7 +9,13 @@ POST    /unfollow   @api.paragraph.ParagraphController.unfollow
 POST    /block      @api.paragraph.ParagraphController.block
 POST    /unblock    @api.paragraph.ParagraphController.unblock
 
-POST    /login      @api.session.SessionController.login
-POST    /logout     @api.session.SessionController.logout
 
-GET     /path       @api.read.ReadController.path(blockIds: Seq[BlockId])
+POST    /login  @api.session.SessionController.login
+POST    /logout @api.session.SessionController.logout
+
+
+GET     /path   @api.read.ReadController.path(blockIds: Seq[BlockId])
+
+
+GET     /block/:blockId/views       @api.messaging.MessagingController.views(blockId: BlockId)
+GET     /block/:blockId/outgoing    @api.messaging.MessagingController.outgoing(blockId: BlockId)
