@@ -28,9 +28,9 @@ object Actions {
                     renderError(ApiError(401, "You must be logged in for this operation"))
                 }
                 case Some(t) =>
-                    val getSession = Sessions.get(t)
+                    val getSession = Sessions.get(t).program
                     val render = for {
-                        userId <- global.redis.run(getSession)
+                        userId <- Program.run(getSession, global.env)
                         publicFn: Public[R, T] = fn(userId, _, _)
                         action = public(bp)(publicFn)
                         result <- action(request)

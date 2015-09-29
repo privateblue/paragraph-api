@@ -1,8 +1,7 @@
 package api.paragraph
 
 import api._
-import api.base.Actions
-import api.base.IdGenerator
+import api.base._
 import api.messaging.Messages
 
 import model.base._
@@ -17,6 +16,8 @@ import org.mindrot.jbcrypt.BCrypt
 import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
+
+import scalaz.std.scalaFuture._
 
 class ParagraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
@@ -33,16 +34,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                    ${Prop.UserName =:= name},
                                                    ${Prop.UserPassword =:= hash}})"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) userId
-            else throw NeoException(s"User $name has not been created")
-        }
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) userId
+            	else throw NeoException(s"User $name has not been created")
+            }.program
+    	    messaging <- Messages.send("registered", model.paragraph.Registered(userId, timestamp, foreignId, name, password)).program
+    	} yield result
 
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("registered", model.paragraph.Registered(userId, timestamp, foreignId, name, password))
-            _ <- global.kafka.run(messaging)
-        } yield result
+        Program.run(prg, global.env)
     }
 
     def start = Actions.authenticated { (userId, timestamp, body) =>
@@ -57,16 +57,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                              ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                              ${Prop.BlockBody =:= blockBody}})"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) blockId
-            else throw NeoException("Block has not been created")
-        }
-
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("started", model.paragraph.Started(userId, timestamp, title, blockBody))
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) blockId
+            	else throw NeoException("Block has not been created")
+            }.program
+    	    messaging <- Messages.send("started", model.paragraph.Started(userId, timestamp, title, blockBody)).program
         } yield result
+
+        Program.run(prg, global.env)
     }
 
     def append = Actions.authenticated { (userId, timestamp, body) =>
@@ -84,16 +83,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
                                                                                                                                                                  ${Prop.Timestamp =:= timestamp}}]-(a)"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) blockId
-            else throw NeoException("Append failed")
-        }
-
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("appended", model.paragraph.Appended(userId, timestamp, target, title, blockBody))
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) blockId
+            	else throw NeoException("Append failed")
+            }.program
+    	    messaging <- Messages.send("appended", model.paragraph.Appended(userId, timestamp, target, title, blockBody)).program
         } yield result
+
+        Program.run(prg, global.env)
     }
 
     def prepend = Actions.authenticated { (userId, timestamp, body) =>
@@ -111,16 +109,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
                                                                                                                                                                  ${Prop.Timestamp =:= timestamp}}]-(a)"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) blockId
-            else throw NeoException("Prepend failed")
-        }
-
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("prepended", model.paragraph.Prepended(userId, timestamp, target, title, blockBody))
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) blockId
+            	else throw NeoException("Prepend failed")
+            }.program
+    	    messaging <- Messages.send("prepended", model.paragraph.Prepended(userId, timestamp, target, title, blockBody)).program
         } yield result
+
+        Program.run(prg, global.env)
     }
 
     def link = Actions.authenticated { (userId, timestamp, body) =>
@@ -132,16 +129,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "link"},
                                         ${Prop.Timestamp =:= timestamp of "link"}"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Already linked")
-        }
-
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to))
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) ()
+            	else throw NeoException("Already linked")
+            }.program
+    	    messaging <- Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to)).program
         } yield result
+
+        Program.run(prg, global.env)
     }
 
     def view = Actions.authenticated { (userId, timestamp, body) =>
@@ -153,14 +149,13 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "view"},
                                         ${Prop.Timestamp =:= timestamp of "view"}"""
 
-        val exec = Query.result(query)(_.getQueryStatistics.containsUpdates)
-
-        for {
-            added <- global.neo.run(exec)
-            messaging = if (added) Messages.send("viewed", model.paragraph.Viewed(userId, timestamp, target))
-                        else Messages.noop
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+            added <- Query.result(query)(_.getQueryStatistics.containsUpdates).program
+	        messaging <- if (added) Messages.send("viewed", model.paragraph.Viewed(userId, timestamp, target)).program
+                         else Messages.noop.program
         } yield ()
+
+        Program.run(prg, global.env)
     }
 
     def follow = Actions.authenticated { (userId, timestamp, body) =>
@@ -171,16 +166,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "follow"},
                                         ${Prop.Timestamp =:= timestamp of "follow"}"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Already followed")
-        }
-
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("followed", model.paragraph.Followed(userId, timestamp, target))
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) ()
+            	else throw NeoException("Already followed")
+            }.program
+    	    messaging <- Messages.send("followed", model.paragraph.Followed(userId, timestamp, target)).program
         } yield result
+
+        Program.run(prg, global.env)
     }
 
     def unfollow = Actions.authenticated { (userId, timestamp, body) =>
@@ -188,16 +182,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Follow}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Unfollow has not been successful")
-        }
-
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("unfollowed", model.paragraph.Unfollowed(userId, timestamp, target))
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) ()
+            	else throw NeoException("Unfollow has not been successful")
+            }.program
+    	    messaging <- Messages.send("unfollowed", model.paragraph.Unfollowed(userId, timestamp, target)).program
         } yield result
+
+        Program.run(prg, global.env)
     }
 
     def block = Actions.authenticated { (userId, timestamp, body) =>
@@ -208,16 +201,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${Prop.UserId =:= userId of "block"},
                                         ${Prop.Timestamp =:= timestamp of "block"}"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Already blocked")
-        }
-
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("blocked", model.paragraph.Blocked(userId, timestamp, target))
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) ()
+            	else throw NeoException("Already blocked")
+            }.program
+    	    messaging <- Messages.send("blocked", model.paragraph.Blocked(userId, timestamp, target)).program
         } yield result
+
+        Program.run(prg, global.env)
     }
 
     def unblock = Actions.authenticated { (userId, timestamp, body) =>
@@ -225,16 +217,15 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Block}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
-        val exec = Query.result(query) { result =>
-            if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Unblocking has not been successful")
-        }
-
-        for {
-            result <- global.neo.run(exec)
-            messaging = Messages.send("unblocked", model.paragraph.Unblocked(userId, timestamp, target))
-            _ <- global.kafka.run(messaging)
+        val prg = for {
+    	    result <- Query.result(query) { result =>
+            	if (result.getQueryStatistics.containsUpdates) ()
+            	else throw NeoException("Unblocking has not been successful")
+            }.program
+    	    messaging <- Messages.send("unblocked", model.paragraph.Unblocked(userId, timestamp, target)).program
         } yield result
+
+        Program.run(prg, global.env)
     }
 
 }

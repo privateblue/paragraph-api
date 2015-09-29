@@ -1,6 +1,6 @@
 package api.messaging
 
-import api.base.Actions
+import api.base._
 
 import model.base.BlockId
 
@@ -10,6 +10,9 @@ import play.api.libs.json._
 import play.api.libs.iteratee.Enumerator
 import play.api.libs.concurrent.Execution.Implicits._
 
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
+
 class MessagingController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     def views(blockId: BlockId) = eventsOf[model.paragraph.Viewed]("viewed", blockId, _.target)
 
@@ -17,15 +20,15 @@ class MessagingController @javax.inject.Inject() (implicit global: api.Global) e
 
     private def eventsOf[T: Format](topic: String, blockId: BlockId, key: T => BlockId) =
         Actions.stream(parse.empty) { (timestamp, _) =>
-            // val messaging = Messages.listen[T, Enumerator[T]](topic) { (consumer, stream) =>
+            // val prg = Messages.listen[T, Enumerator[T]](topic) { (consumer, stream) =>
             //     val events = stream.filter(e => key(e) == blockId)
             //     Enumerator.unfold(events) {
             //         case Stream.Empty => None
             //         case head#::tail => Some(tail, head)
             //     }.onDoneEnumerating(consumer.shutdown())
-            // }
+            // }.program
             //
-            // global.kafka.run(messaging)
+            // Await.result(Program.run(prg, global.env), Duration.Inf)
 
 
             val consumerConfig = new kafka.consumer.ConsumerConfig({
