@@ -36,4 +36,18 @@ object Query {
         Kleisli[Err, GraphDatabaseService, T] { db =>
             \/.fromTryCatchNonFatal(fn(db)).leftMap(e => NeoException(e.getMessage))
         }
+
+    def transaction[T](exec: Exec[T]): Exec[T] = for {
+        tx <- lift(_.beginTx())
+        wrapped <- exec.mapK[Err, T] {
+            case -\/(e) =>
+                tx.failure()
+                tx.close()
+                -\/(e)
+            case \/-(res) =>
+                tx.success()
+                tx.close()
+                \/-(res)
+        }
+    } yield wrapped
 }

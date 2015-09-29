@@ -1,21 +1,25 @@
 package api
 
-import api.base.Config
+import api.base._
 import api.session.Sessions
 
 import neo._
-import neo.{Env => NeoEnv}
-
-import redis.{Env => RedisEnv}
 
 import org.slf4j.LoggerFactory
 
 import com.typesafe.config.ConfigFactory
 
+import org.neo4j.graphdb.factory.GraphDatabaseFactory
+import org.neo4j.logging.slf4j.Slf4jLogProvider
+
+import redis.RedisClient
+
 import akka.actor.ActorSystem
 
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.inject.ApplicationLifecycle
+
+import scalaz.std.scalaFuture._
 
 import scala.collection.JavaConversions._
 
@@ -25,35 +29,33 @@ import scala.concurrent.duration.Duration
 
 @javax.inject.Singleton
 class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
-    implicit val system = ActorSystem()
-
     val config = Config(ConfigFactory.load())
 
-    val logger = LoggerFactory.getLogger("Neo")
+    val logger = LoggerFactory.getLogger("Paragraph")
 
-    val neo = NeoEnv(
-        dbPath = config.neoPath,
-        logger = logger,
-        executionContext = system.dispatchers.lookup("neo.dispatcher")
-    )
+    private val db =
+        new GraphDatabaseFactory()
+            .setUserLogProvider(new Slf4jLogProvider)
+            .newEmbeddedDatabase(config.neoPath)
 
-    val redis = RedisEnv(
-        host = config.redisHost,
-        port = config.redisPort,
-        password = config.redisPassword,
-        logger = logger,
-        system = ActorSystem("redis")
-    )
+    private val redisSystem = ActorSystem("Redis")
+    private val redis = RedisClient(
+        config.redisHost,
+        config.redisPort,
+        config.redisPassword
+    )(redisSystem)
+
+    val env = Env(db, redis)
 
     import api.base.NeoModel._
     val init = for {
-        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserForeignId} IS UNIQUE")
-        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserName} IS UNIQUE")
-        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Block}) ASSERT n.${Prop.BlockId} IS UNIQUE")
-        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserId} IS UNIQUE")
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserForeignId} IS UNIQUE").program
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserName} IS UNIQUE").program
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Block}) ASSERT n.${Prop.BlockId} IS UNIQUE").program
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserId} IS UNIQUE").program
     } yield ()
     val runInit =
-        neo.run(init)
+        Program.run(init, env)
             .map(_ => logger.info("Database initialized"))
             .recover {
                 case e: Throwable => logger.error(s"Database initialization failed: ${e.getMessage}")
@@ -62,8 +64,8 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
 
     lifecycle.addStopHook { () =>
         for {
-            _ <- neo.shutdown()
-            _ <- redis.shutdown()
+            _ <- Future { db.shutdown() }
+            _ <- Future { redisSystem.shutdown() }
         } yield ()
     }
 }

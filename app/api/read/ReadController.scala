@@ -1,7 +1,6 @@
 package api.read
 
-import api.base.Actions
-import api.base.ApiError
+import api.base._
 
 import model.base._
 import model.read._
@@ -13,6 +12,7 @@ import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.Direction
 
 import play.api.mvc._
+import play.api.libs.concurrent.Execution.Implicits._
 
 import scalaz._
 
@@ -22,7 +22,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     import api.base.NeoModel._
 
     def path(blockIds: Seq[BlockId]) = Actions.public(parse.empty) { (_, _) =>
-        val exec = Query.lift { db =>
+        val prg = Query.lift { db =>
             blockIds.foldLeft(List.empty[Block]) {
                 case (Nil, id) =>
                     val block = for {
@@ -39,8 +39,8 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
                         block.map(_::path).getOrElse(throw ApiError(404, s"Block $id not found"))
                     } else throw ApiError(404, s"""Path from ${path.map(_.blockId).reverse.mkString("-->")} to $id not found""")
             }.reverse
-        }
-        global.neo.run(exec)
+        }.program
+        Program.run(prg, global.env)
     }
 
     private def nodeToBlock(node: Node): Option[Block] =
