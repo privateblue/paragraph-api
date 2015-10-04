@@ -22,6 +22,9 @@ import scalaz.std.scalaFuture._
 class ParagraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
 
+    implicit val kafkaSystem = global.kafkaSystem
+    implicit val kafkaMaterializer = global.kafkaMaterializer
+
     def register = Actions.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]
         val name = (body \ "name").as[String]

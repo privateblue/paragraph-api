@@ -61,7 +61,7 @@ object Actions {
         Action(bp) { request =>
             val timestamp = System.currentTimeMillis
             val enumerator = fn(timestamp, request.body)
-            val jsonWriter = Enumeratee.map[T](value => implicitly[Writes[T]].writes(value).toString)
+            val jsonWriter = Enumeratee.map[T](value => implicitly[Writes[T]].writes(value).toString + "\n\n")
             Ok.chunked(enumerator through jsonWriter)
         }
 

@@ -4,13 +4,17 @@ import api.base.IdGenerator
 
 import kafka.Command
 
-import kafka.consumer.ConsumerConnector
-import kafka.consumer.Whitelist
+import com.softwaremill.react.kafka.ProducerProperties
+import com.softwaremill.react.kafka.ConsumerProperties
+
+import kafka.serializer.StringEncoder
 import kafka.serializer.StringDecoder
 
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.clients.producer.RecordMetadata
-import org.apache.kafka.clients.producer.Callback
+import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
+
+import akka.actor.ActorSystem
+import akka.stream.Materializer
 
 import play.api.libs.json._
 
@@ -18,26 +22,27 @@ import scala.concurrent.Future
 import scala.concurrent.Promise
 
 object Messages {
-    def send[T](topic: String, msg: T)(implicit writes: Writes[T]) = Command.send { producer =>
-        val promise = Promise[RecordMetadata]
+    def send[T](topic: String, msg: T)(implicit writes: Writes[T], system: ActorSystem, mat: Materializer) = Command { kafka =>
+        val subscriber = kafka.publish(ProducerProperties(
+            brokerList = kafka.host,
+            topic = topic,
+            encoder = new StringEncoder
+        ))
         val message = writes.writes(msg).toString
-        val kafkaMsg = new ProducerRecord[String, String](topic, message)
-        producer.send(kafkaMsg, new Callback {
-            def onCompletion(metadata: RecordMetadata, exception: Exception) =
-                if (metadata != null) promise success metadata
-                else promise failure exception
-        })
-        promise.future
+        Source.single[String](message).to(Sink(subscriber)).run()
     }
 
-    def noop = Command.send(_ => Future.successful(()))
+    def noop = Command(_ => ())
 
-    def listen[T, R](topic: String)(fn: (ConsumerConnector, Stream[T]) => R)(implicit reads: Reads[T]) = Command.receive(IdGenerator.key) { consumer =>
-        val stream = consumer.createMessageStreamsByFilter(new Whitelist(topic), 1, new StringDecoder, new StringDecoder)
-            .headOption
-            .map(_.toStream)
-            .getOrElse(Stream.empty)
-            .map(msg => Json.parse(msg.message).as[T])
-        fn(consumer, stream)
+    def listen[T, R](topic: String)(fn: Source[T, _] => R)(implicit reads: Reads[T], system: ActorSystem) = Command { kafka =>
+        val publisher = kafka.consume(ConsumerProperties(
+            brokerList = kafka.host,
+            zooKeeperHost = kafka.zooKeeperHost,
+            topic = topic,
+            groupId = IdGenerator.key,
+            decoder = new StringDecoder
+        ))
+        val src = Source(publisher).map(msg => Json.parse(msg.message).as[T])
+        fn(src)
     }
 }

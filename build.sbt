@@ -1,6 +1,6 @@
 name := "paragraph"
 
-scalaVersion := "2.11.6"
+scalaVersion := "2.11.7"
 
 libraryDependencies ++= Seq(
     "org.scalaz" %% "scalaz-core" % "7.1.3",
@@ -11,8 +11,8 @@ libraryDependencies ++= Seq(
     "com.etaty.rediscala" %% "rediscala" % "1.4.0",
     "org.mindrot" % "jbcrypt" % "0.3m",
     "com.fasterxml.uuid" % "java-uuid-generator" % "3.1.3",
-    "org.apache.kafka" % "kafka_2.11" % "0.8.2.1" exclude("org.slf4j", "slf4j-log4j12"),
-    "org.apache.kafka" % "kafka-clients" % "0.8.2.1" exclude("org.slf4j", "slf4j-log4j12")
+    "com.softwaremill.reactivekafka" %% "reactive-kafka-core" % "0.8.1",
+    "com.typesafe.play" %% "play-streams-experimental" % "2.4.2"
 )
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
