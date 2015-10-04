@@ -1,15 +1,181 @@
-POST    /register   @api.paragraph.ParagraphController.register
-POST    /start      @api.paragraph.ParagraphController.start
-POST    /append     @api.paragraph.ParagraphController.append
-POST    /prepend    @api.paragraph.ParagraphController.prepend
-POST    /link       @api.paragraph.ParagraphController.link
-POST    /view       @api.paragraph.ParagraphController.view
-POST    /follow     @api.paragraph.ParagraphController.follow
-POST    /unfollow   @api.paragraph.ParagraphController.unfollow
-POST    /block      @api.paragraph.ParagraphController.block
-POST    /unblock    @api.paragraph.ParagraphController.unblock
+#####################
+# USER SESSION ROUTES
+#####################
+
+# Logs in an existing user, and starts a session for her.
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - name: string, unique, required
+# - name: password (SHA256), non unique, required
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": JSON object
+# that consists of fields:
+# - "userId": string (the user id of the logged in user)
+# - "token": string (the token identifying the user's session)
+# - "name": string (the user's name)
 
 POST    /login      @api.session.SessionController.login
+
+# Logs out the current user, and deletes her session.
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": "success"
+
 POST    /logout     @api.session.SessionController.logout
+
+
+
+
+#####################
+# GRAPH WRITER ROUTES
+#####################
+
+# Registers a user.
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "name": string, unique, required
+# - "password": string (SHA256), non unique, required
+# - "foreignId": string, unique, required (currently not in use, so can be same as name)
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": string (the user id of the newly created user)
+
+POST    /register   @api.paragraph.ParagraphController.register
+
+# Creates a new block without connecting it to other blocks.
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "title": string, non unique, optional
+# - "body": JSON object, non unique, required
+#
+# The body JSON object consists of:
+# - "type": string, "text" | "image", required
+# - "content": JSON object, non unique, required
+# The content JSON object consists of one field, that is "text" if type is "text", and "url" if type is "image".
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": string (the block id of the newly created block)
+
+POST    /start      @api.paragraph.ParagraphController.start
+
+# Appends a new block to an existing block. (The "reply" action.)
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "target": string, non unique, required (the block id of the existing block)
+# - "title": string, non unique, optional
+# - "body": JSON object, non unique, required (see details at /start route)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": string (the block id of the newly created block)
+
+POST    /append     @api.paragraph.ParagraphController.append
+
+# Prepends a new block to an existing block. (The "share" action.)
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "target": string, non unique, required (the block id of the existing block)
+# - "title": string, non unique, optional
+# - "body": JSON object, non unique, required (see details at /start route)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": string (the block id of the newly created block)
+
+POST    /prepend    @api.paragraph.ParagraphController.prepend
+
+# Links two existing blocks.
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "from": string, non unique, required (the block id of the start block)
+# - "to": string, non unique, required (the block id of the end block)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": "success" (if the link has been created successfuly)
+
+POST    /link       @api.paragraph.ParagraphController.link
+
+# Connects the current user to a block with a VIEW arrow (i.e. the user have seen the block).
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "target": string, non unique, required (the block id of the block being viewed)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": "success"
+
+POST    /view       @api.paragraph.ParagraphController.view
+
+# Follows a user by the current user.
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "target": string, non unique, required (the user id of the user being followed)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": "success"
+
+POST    /follow     @api.paragraph.ParagraphController.follow
+
+# Unfollows a user by the current user.
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "target": string, non unique, required (the user id of the user being unfollowed)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": "success"
+
+POST    /unfollow   @api.paragraph.ParagraphController.unfollow
+
+# Blocks a user by the current user.
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "target": string, non unique, required (the user id of the user being blocked)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": "success"
+
+POST    /block      @api.paragraph.ParagraphController.block
+
+# Unblocks a user by the current user.
+#
+# The body of the HTTP request is a JSON object, with the following fields:
+# - "target": string, non unique, required (the user id of the user being unblocked)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with the following fields:
+# - "data": "success"
+
+POST    /unblock    @api.paragraph.ParagraphController.unblock
+
+
+
+
+#####################
+# GRAPH READER ROUTES
+#####################
+
+# Returns an array of block objects, that are connected by LINK arrows, forming a path in the graph.
+#
+# Requires "blockIds" url parameter, with the block id(s) of block(s).
+#
+# The body of the returned HTTP response is a JSON array of block JSON objects. (Omitting description
+# of the block JSON object as it is pretty self-explanatory.)
 
 GET     /path       @api.read.ReadController.path(blockIds: Seq[BlockId])
