@@ -22,25 +22,31 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     import api.base.NeoModel._
 
     def path(blockIds: Seq[BlockId]) = Actions.public(parse.empty) { (_, _) =>
-        val prg = Query.lift { db =>
-            blockIds.foldLeft(List.empty[Block]) {
-                case (Nil, id) =>
-                    val block = for {
-                        first <- Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying))
-                        b <- nodeToBlock(first)
-                    } yield b
-                    block.map(_::Nil).getOrElse(throw ApiError(404, s"Block $id not found"))
-                case (path, id) =>
-                    if (path.head.outgoing.exists(c => c.blockId == id && c.connection.arrow == Arrow.Link)) {
-                        val block = for {
-                            next <- Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying))
-                            b <- nodeToBlock(next)
-                        } yield b
-                        block.map(_::path).getOrElse(throw ApiError(404, s"Block $id not found"))
-                    } else throw ApiError(404, s"""Path from ${path.map(_.blockId).reverse.mkString("-->")} to $id not found""")
-            }.reverse
-        }.program
-        Program.run(prg, global.env)
+        val query = blockIds.toList match {
+            case Nil => Query.error(ApiError(400, "Specify at least one block id parameter"))
+            case firstId :: restIds => for {
+                first <- loadNode(firstId)
+                nodes = restIds.foldLeft(List(first)) { (path, id) =>
+                    val outgoing = path.head.getRelationships(Arrow.Link, Direction.OUTGOING)
+                    val node = outgoing.map(_.getEndNode).find(node => Prop.BlockId.from(node).contains(id))
+                    val block = node.getOrElse(throw ApiError(404, s"Block $id not found"))
+                    block :: path
+                }
+                blocks = nodes.foldLeft(List.empty[Block]) { (path, node) =>
+                    val block = nodeToBlock(node).getOrElse(throw ApiError(404, "Missing block properties"))
+                    block :: path
+                }
+            } yield blocks
+        }
+        Program.run(query.program, global.env)
+    }
+
+    private def loadBlock(blockId: BlockId) =
+        loadNode(blockId).map(node => nodeToBlock(node).getOrElse(throw ApiError(404, "missing block properties")))
+
+    private def loadNode(blockId: BlockId) = Query.lift { db =>
+        val node = db.findNode(Label.Block, Prop.BlockId.name, NeoValue(blockId).underlying)
+        Option(node).getOrElse(throw ApiError(404, s"Block $blockId not found"))
     }
 
     private def nodeToBlock(node: Node): Option[Block] =
