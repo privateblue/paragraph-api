@@ -2,6 +2,8 @@ package neo
 
 import org.neo4j.graphdb.PropertyContainer
 
+import scalaz._
+
 case class Property[T](name: String) {
 
     def =:=(value: Option[T])(implicit nvw: NeoValueWrites[T]): PropertyValue = value match {
@@ -11,8 +13,11 @@ case class Property[T](name: String) {
 
     def =:=(value: T)(implicit nvw: NeoValueWrites[T]) = PropertyValue.NonEmpty(name, nvw.write(value))
 
-    def from(container: PropertyContainer)(implicit reader: PropertyReader[T]): Option[T] =
-        Option(container.getProperty(name, null)).map(reader.read)
+    def from(container: PropertyContainer)(implicit reader: PropertyReader[T]): ValidationNel[Throwable, T] =
+        Validation.fromTryCatchNonFatal[T] {
+            val v = container.getProperty(name)
+            reader.read(v)
+        }.toValidationNel
 }
 
 sealed trait PropertyValue

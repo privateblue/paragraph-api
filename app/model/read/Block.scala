@@ -10,9 +10,9 @@ case class Block(
     timestamp: Long,
     body: BlockBody,
     author: User,
-    incoming: Seq[BlockConnection],
-    outgoing: Seq[BlockConnection],
-    views: Seq[Connection]
+    incoming: List[BlockConnection],
+    outgoing: List[BlockConnection],
+    views: List[Connection]
 )
 
 object Block {
