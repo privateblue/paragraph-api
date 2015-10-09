@@ -171,11 +171,62 @@ POST    /unblock    @api.paragraph.ParagraphController.unblock
 # GRAPH READER ROUTES
 #####################
 
+# Returns a Block.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "blockId": string (the block id of the block)
+# - "title": string
+# - "timestamp": number (the creation time of the Block)
+# - "body": JSON object (see details at /start route)
+# - "author": JSON object (see details at /block/:blockId/author route)
+
+GET     /block/:blockId             @api.read.ReadController.block(blockId: BlockId)
+
+# Returns the author of a Block.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "userId": string (the user id of the user)
+# - "timestamp": number (the creation time of the user)
+# - "foreignId": string
+# - "name": string
+
+GET     /block/:blockId/author      @api.read.ReadController.author(blockId: BlockId)
+
+# Returns the incoming connections to a Block from other Blocks.
+#
+# The body of the returned HTTP response is an array of JSON objects, each with fields:
+# - "connection": JSON object (the arrow)
+# - "blockId": string (the block id of the connecting Block)
+#
+# The connection JSON object consists of fields:
+# - "userId": string (the user id of the user that created the arrow)
+# - "timestamp": number (the creation time of the arrow)
+# - "arrow": "LINK"
+
+GET     /block/:blockId/incoming    @api.read.ReadController.incoming(blockId: BlockId)
+
+# Returns the outgoing connections from a Block to other Blocks.
+#
+# The body of the returned HTTP response is an array of JSON objects, each with fields:
+# - "connection": JSON object (the arrow, see details at /block/:blockId/incoming route)
+# - "blockId": string (the block id of the connecting Block)
+
+GET     /block/:blockId/outgoing    @api.read.ReadController.outgoing(blockId: BlockId)
+
+# Returns VIEW type arrows to a Block.
+#
+# The body of the returned HTTP response is an array of JSON objects, each with fields:
+# - "userId": string (the user id of the viewer)
+# - "timestamp": number (the creation time of the view arrow)
+# - "arrow": "VIEW"
+
+GET     /block/:blockId/views       @api.read.ReadController.views(blockId: BlockId)
+
 # Returns an array of block objects, that are connected by LINK arrows, forming a path in the graph.
 #
 # Requires "blockIds" url parameter, with the block id(s) of block(s).
 #
-# The body of the returned HTTP response is a JSON array of block JSON objects. (Omitting description
-# of the block JSON object as it is pretty self-explanatory.)
+# The body of the returned HTTP response is a JSON array of block JSON objects (see details
+# at /block/:blockId route).
 
-GET     /path       @api.read.ReadController.path(blockIds: Seq[BlockId])
+GET     /path                       @api.read.ReadController.path(blockIds: Seq[BlockId])

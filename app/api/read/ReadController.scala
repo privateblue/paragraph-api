@@ -22,6 +22,39 @@ import scala.collection.JavaConversions._
 class ReadController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
 
+    def block(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = loadBlock(blockId)
+        Program.run(query.program, global.env)
+    }
+
+    def author(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield validate(authorOf(node))
+        Program.run(query.program, global.env)
+    }
+
+    def incoming(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield parentBlocks(node).sortBy(block => (block.connection.timestamp, block.blockId))
+        Program.run(query.program, global.env)
+    }
+
+    def outgoing(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield childBlocks(node).sortBy(block => (block.connection.timestamp, block.blockId))
+        Program.run(query.program, global.env)
+    }
+
+    def views(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield viewsOf(node)
+        Program.run(query.program, global.env)
+    }
+
     def path(blockIds: Seq[BlockId]) = Actions.public(parse.empty) { (_, _) =>
         val query = blockIds.toList match {
             case Nil => Query.error(ApiError(400, "Specify at least one block id parameter"))
@@ -34,7 +67,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
                     block :: path
                 }
                 blocks = nodes.foldLeft(List.empty[Block]) { (path, node) =>
-                    val extract = nodeToBlock _ andThen validateBlock _
+                    val extract = nodeToBlock _ andThen validate _
                     extract(node) :: path
                 }
             } yield blocks
@@ -43,17 +76,17 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     }
 
     private def loadBlock(blockId: BlockId): Query.Exec[Block] =
-        loadBlockNode(blockId).map(nodeToBlock _ andThen validateBlock _)
+        loadBlockNode(blockId).map(nodeToBlock _ andThen validate _)
 
     private def loadBlockNode(blockId: BlockId): Query.Exec[Node] = Query.lift { db =>
         val node = db.findNode(Label.Block, Prop.BlockId.name, NeoValue(blockId).underlying)
         Option(node).getOrElse(throw ApiError(404, s"Block $blockId not found"))
     }
 
-    private def validateBlock(readBlock: ValidationNel[Throwable, Block]): Block =
-        readBlock.fold(
-            fail = ts => throw ApiError(500, ts.list.map(_.getMessage).mkString(", \n")),
-            succ = b => b
+    private def validate[T](read: ValidationNel[Throwable, T]): T =
+        read.fold(
+            fail = es => throw ApiError(500, es.list.map(_.getMessage).mkString(", \n")),
+            succ = t => t
         )
 
     private def nodeToBlock(node: Node): ValidationNel[Throwable, Block] =
@@ -67,12 +100,9 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             }
             val readAuthor = authorOf(node)
             val title = Prop.BlockTitle.from(node).toOption
-            val incoming = parentBlocks(node)
-            val outgoing = childBlocks(node)
-            val views = viewsOf(node)
             (readBlockId |@| readTimestamp |@| readBody |@| readAuthor) {
                 case (blockId, timestamp, body, author) =>
-                    Block(blockId, title, timestamp, body, author, incoming, outgoing, views)
+                    Block(blockId, title, timestamp, body, author)
             }
         } else ApiError(500, "Cannot convert node to Block").failureNel[Block]
 
