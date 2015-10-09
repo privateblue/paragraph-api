@@ -15,80 +15,140 @@ import play.api.mvc._
 import play.api.libs.concurrent.Execution.Implicits._
 
 import scalaz._
+import Scalaz._
 
 import scala.collection.JavaConversions._
 
 class ReadController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
 
-    def path(blockIds: Seq[BlockId]) = Actions.public(parse.empty) { (_, _) =>
-        val prg = Query.lift { db =>
-            blockIds.foldLeft(List.empty[Block]) {
-                case (Nil, id) =>
-                    val block = for {
-                        first <- Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying))
-                        b <- nodeToBlock(first)
-                    } yield b
-                    block.map(_::Nil).getOrElse(throw ApiError(404, s"Block $id not found"))
-                case (path, id) =>
-                    if (path.head.outgoing.exists(c => c.blockId == id && c.connection.arrow == Arrow.Link)) {
-                        val block = for {
-                            next <- Option(db.findNode(Label.Block, Prop.BlockId.name, NeoValue(id).underlying))
-                            b <- nodeToBlock(next)
-                        } yield b
-                        block.map(_::path).getOrElse(throw ApiError(404, s"Block $id not found"))
-                    } else throw ApiError(404, s"""Path from ${path.map(_.blockId).reverse.mkString("-->")} to $id not found""")
-            }.reverse
-        }.program
-        Program.run(prg, global.env)
+    def block(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = loadBlock(blockId)
+        Program.run(query.program, global.env)
     }
 
-    private def nodeToBlock(node: Node): Option[Block] =
-        if (node.getLabels.toSeq.contains(Label.Block))
-            for {
-                blockId <- Prop.BlockId from node
-                title = Prop.BlockTitle from node
-                timestamp <- Prop.Timestamp from node
-                bodyLabel <- Prop.BlockBodyLabel from node
-                body <- bodyLabel match {
-                    case BlockBody.Label.text => Prop.TextBody from node
-                    case BlockBody.Label.image => Prop.ImageBody from node
+    def author(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield validate(authorOf(node))
+        Program.run(query.program, global.env)
+    }
+
+    def incoming(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield parentBlocks(node).sortBy(block => (block.connection.timestamp, block.blockId))
+        Program.run(query.program, global.env)
+    }
+
+    def outgoing(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield childBlocks(node).sortBy(block => (block.connection.timestamp, block.blockId))
+        Program.run(query.program, global.env)
+    }
+
+    def views(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield viewsOf(node)
+        Program.run(query.program, global.env)
+    }
+
+    def path(blockIds: Seq[BlockId]) = Actions.public(parse.empty) { (_, _) =>
+        val query = blockIds.toList match {
+            case Nil => Query.error(ApiError(400, "Specify at least one block id parameter"))
+            case firstId :: restIds => for {
+                first <- loadBlockNode(firstId)
+                nodes = restIds.foldLeft(List(first)) { (path, id) =>
+                    val outgoing = path.head.getRelationships(Arrow.Link, Direction.OUTGOING)
+                    val node = outgoing.map(_.getEndNode).find(n => Prop.BlockId.from(n).toOption.contains(id))
+                    val block = node.getOrElse(throw ApiError(404, s"Block $id not found"))
+                    block :: path
                 }
-                authorArrow <- Option(node.getSingleRelationship(Arrow.Author, Direction.INCOMING))
-                author <- nodeToUser(authorArrow.getStartNode)
-                incoming = parentBlocks(node)
-                outgoing = childBlocks(node)
-                views = node.getRelationships(Direction.INCOMING, Arrow.View).flatMap(relationshipToConnection).toSeq
-            } yield Block(blockId, title, timestamp, body, author, incoming, outgoing, views)
-        else None
+                blocks = nodes.foldLeft(List.empty[Block]) { (path, node) =>
+                    val extract = nodeToBlock _ andThen validate _
+                    extract(node) :: path
+                }
+            } yield blocks
+        }
+        Program.run(query.program, global.env)
+    }
 
-    private def nodeToUser(node: Node): Option[User] =
-        if (node.getLabels.toSeq.contains(Label.User))
-            for {
-                userId <- Prop.UserId from node
-                timestamp <- Prop.Timestamp from node
-                foreignId <- Prop.UserForeignId from node
-                name <- Prop.UserName from node
-            } yield User(userId, timestamp, foreignId, name)
-        else None
+    private def loadBlock(blockId: BlockId): Query.Exec[Block] =
+        loadBlockNode(blockId).map(nodeToBlock _ andThen validate _)
 
-    private def parentBlocks(node: Node): Seq[BlockConnection] =
+    private def loadBlockNode(blockId: BlockId): Query.Exec[Node] = Query.lift { db =>
+        val node = db.findNode(Label.Block, Prop.BlockId.name, NeoValue(blockId).underlying)
+        Option(node).getOrElse(throw ApiError(404, s"Block $blockId not found"))
+    }
+
+    private def validate[T](read: ValidationNel[Throwable, T]): T =
+        read.fold(
+            fail = es => throw ApiError(500, es.list.map(_.getMessage).mkString(", \n")),
+            succ = t => t
+        )
+
+    private def nodeToBlock(node: Node): ValidationNel[Throwable, Block] =
+        if (node.getLabels.toSeq.contains(Label.Block)) {
+            val readBlockId = Prop.BlockId from node
+            val readTimestamp = Prop.Timestamp from node
+            val readBody = Prop.BlockBodyLabel from node match {
+                case Success(BlockBody.Label.text) => Prop.TextBody from node
+                case Success(BlockBody.Label.image) => Prop.ImageBody from node
+                case _ => ApiError(500, "Invalid body type").failureNel[BlockBody]
+            }
+            val readAuthor = authorOf(node)
+            val title = Prop.BlockTitle.from(node).toOption
+            (readBlockId |@| readTimestamp |@| readBody |@| readAuthor) {
+                case (blockId, timestamp, body, author) =>
+                    Block(blockId, title, timestamp, body, author)
+            }
+        } else ApiError(500, "Cannot convert node to Block").failureNel[Block]
+
+    private def authorOf(node: Node): ValidationNel[Throwable, User] =
+        Option(node.getSingleRelationship(Arrow.Author, Direction.INCOMING)) match {
+            case Some(authorArrow) => nodeToUser(authorArrow.getStartNode)
+            case _ => ApiError(500, "Author not found").failureNel[User]
+        }
+
+    private def nodeToUser(node: Node): ValidationNel[Throwable, User] =
+        if (node.getLabels.toSeq.contains(Label.User)) {
+            val readUserId = Prop.UserId from node
+            val readTimestamp = Prop.Timestamp from node
+            val readForeignId = Prop.UserForeignId from node
+            val readName = Prop.UserName from node
+            (readUserId |@| readTimestamp |@| readForeignId |@| readName) {
+                case (userId, timestamp, foreignId, name) => User(userId, timestamp, foreignId, name)
+            }
+        } else ApiError(500, "Cannot convert node to User").failureNel[User]
+
+    private def viewsOf(node: Node): List[Connection] = for {
+        rel <- node.getRelationships(Direction.INCOMING, Arrow.View).toList
+        connection <- relationshipToConnection(rel).toOption
+    } yield connection
+
+    private def parentBlocks(node: Node): List[BlockConnection] =
         connectingBlocks(node, Direction.INCOMING)
 
-    private def childBlocks(node: Node): Seq[BlockConnection] =
+    private def childBlocks(node: Node): List[BlockConnection] =
         connectingBlocks(node, Direction.OUTGOING)
 
-    private def connectingBlocks(node: Node, dir: Direction): Seq[BlockConnection] = for {
-        rel <- node.getRelationships(dir).filter(_.getOtherNode(node).getLabels.toSeq.contains(Label.Block)).toSeq
-        connection <- relationshipToConnection(rel)
+    private def connectingBlocks(node: Node, dir: Direction): List[BlockConnection] = for {
+        rel <- node.getRelationships(dir).toList
         other = rel.getOtherNode(node)
-        otherId <- Prop.BlockId from other
+        if other.getLabels.toList.contains(Label.Block)
+        connection <- relationshipToConnection(rel).toOption
+        otherId <- Prop.BlockId.from(other).toOption
     } yield BlockConnection(connection, otherId)
 
-    private def relationshipToConnection(rel: Relationship): Option[Connection] = for {
-        userId <- Prop.UserId from rel
-        timestamp <- Prop.Timestamp from rel
-        arrow = neo.Arrow(rel.getType)
-    } yield Connection(userId, timestamp, arrow)
+    private def relationshipToConnection(rel: Relationship): ValidationNel[Throwable, Connection] = {
+        val arrow = neo.Arrow(rel.getType)
+        val readUserId = Prop.UserId from rel
+        val readTimestamp = Prop.Timestamp from rel
+        (readUserId |@| readTimestamp) {
+            case (userId, timestamp) =>  Connection(userId, timestamp, arrow)
+        }
+    }
 
 }

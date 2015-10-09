@@ -74,6 +74,6 @@ object Actions {
             case ApiError(c, _) => c
             case _ => 500
         }
-        new Status(code)(body.toString)
+        new Status(code)(body.toString).as("application/json")
     }
 }

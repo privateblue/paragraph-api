@@ -38,4 +38,6 @@ object BlockId {
         override def unbind(key: String, blockIds: Seq[BlockId]): String =
             blockIds.map(id => s"$key=$id").mkString("&")
     }
+
+    implicit val blockIdOrdering = Ordering.by[BlockId, String](_.key)
 }

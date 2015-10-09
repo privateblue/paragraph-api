@@ -32,11 +32,6 @@ object Query {
             } yield ret
         }
 
-    def lift[T](fn: GraphDatabaseService => T): Exec[T] =
-        Kleisli[Err, GraphDatabaseService, T] { db =>
-            \/.fromTryCatchNonFatal(fn(db)).leftMap(e => NeoException(e.getMessage))
-        }
-
     def transaction[T](exec: Exec[T]): Exec[T] = for {
         tx <- lift(_.beginTx())
         wrapped <- exec.mapK[Err, T] {
@@ -50,4 +45,12 @@ object Query {
                 \/-(res)
         }
     } yield wrapped
+
+    def lift[T](fn: GraphDatabaseService => T): Exec[T] =
+        Kleisli[Err, GraphDatabaseService, T] { db =>
+            \/.fromTryCatchNonFatal(fn(db)).leftMap(e => NeoException(e.getMessage))
+        }
+
+    def error(t: Throwable): Exec[Nothing] =
+        Kleisli[Err, GraphDatabaseService, Nothing](_ => t.left)
 }

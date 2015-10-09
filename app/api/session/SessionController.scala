@@ -26,8 +26,8 @@ class SessionController @javax.inject.Inject() (implicit global: api.Global) ext
             userId <- Query.lift { db =>
                 val checkedUserId = for {
                     node <- Option(db.findNode(Label.User, Prop.UserName.name, NeoValue(name).underlying))
-                    id <- Prop.UserId from node
-                    stored <- Prop.UserPassword from node
+                    id <- Prop.UserId.from(node).toOption
+                    stored <- Prop.UserPassword.from(node).toOption
                 } yield if (BCrypt.checkpw(provided, stored)) id
                         else throw ApiError(401, "Authentication failed")
                 checkedUserId.getOrElse(throw ApiError(401, "User not found"))

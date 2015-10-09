@@ -1,21 +1,242 @@
+#####################
+# USER SESSION ROUTES
+#####################
+
+# Logs in an existing user, and starts a session for her.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - name: string, unique, required
+# - password: string (SHA256), non unique, required
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": JSON object
+# that consists of fields:
+# - "userId": string (the user id of the logged in user)
+# - "token": string (the token identifying the user's session)
+# - "name": string (the user's name)
+
+POST    /login      @api.session.SessionController.login
+
+# Logs out the current user, and deletes her session.
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success"
+
+POST    /logout     @api.session.SessionController.logout
+
+
+
+
+#####################
+# GRAPH WRITER ROUTES
+#####################
+
+# Registers a user.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "name": string, unique, required
+# - "password": string (SHA256), non unique, required
+# - "foreignId": string, unique, required (currently not in use, so can be set to same value as name)
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": string (the user id of the newly created user)
+
 POST    /register   @api.paragraph.ParagraphController.register
+
+# Creates a new block without connecting it to other blocks.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "title": string, non unique, optional
+# - "body": JSON object, non unique, required
+#
+# The body JSON object consists of fields:
+# - "type": string, "text" | "image", required
+# - "content": JSON object, non unique, required
+# The content JSON object consists of one field, that is "text" if type equals "text", and "url" if type equals "image".
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": string (the block id of the newly created block)
+
 POST    /start      @api.paragraph.ParagraphController.start
+
+# Appends a new block to an existing block. (The "reply" action.)
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "target": string, non unique, required (the block id of the existing block)
+# - "title": string, non unique, optional
+# - "body": JSON object, non unique, required (see details at /start route)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": string (the block id of the newly created block)
+
 POST    /append     @api.paragraph.ParagraphController.append
+
+# Prepends a new block to an existing block. (The "share" action.)
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "target": string, non unique, required (the block id of the existing block)
+# - "title": string, non unique, optional
+# - "body": JSON object, non unique, required (see details at /start route)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": string (the block id of the newly created block)
+
 POST    /prepend    @api.paragraph.ParagraphController.prepend
+
+# Links two existing blocks.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "from": string, non unique, required (the block id of the start block)
+# - "to": string, non unique, required (the block id of the end block)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success" (if the link has been created successfuly)
+
 POST    /link       @api.paragraph.ParagraphController.link
+
+# Connects the current user to a block with a VIEW arrow (i.e. the user have seen the block).
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "target": string, non unique, required (the block id of the block being viewed)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success"
+
 POST    /view       @api.paragraph.ParagraphController.view
+
+# Follows a user by the current user.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "target": string, non unique, required (the user id of the user being followed)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success"
+
 POST    /follow     @api.paragraph.ParagraphController.follow
+
+# Unfollows a user by the current user.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "target": string, non unique, required (the user id of the user being unfollowed)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success"
+
 POST    /unfollow   @api.paragraph.ParagraphController.unfollow
+
+# Blocks a user by the current user.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "target": string, non unique, required (the user id of the user being blocked)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success"
+
 POST    /block      @api.paragraph.ParagraphController.block
+
+# Unblocks a user by the current user.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "target": string, non unique, required (the user id of the user being unblocked)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success"
+
 POST    /unblock    @api.paragraph.ParagraphController.unblock
 
 
-POST    /login  @api.session.SessionController.login
-POST    /logout @api.session.SessionController.logout
 
 
-GET     /path   @api.read.ReadController.path(blockIds: Seq[BlockId])
+#####################
+# GRAPH READER ROUTES
+#####################
+
+# Returns a Block.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "blockId": string (the block id of the block)
+# - "title": string
+# - "timestamp": number (the creation time of the Block)
+# - "body": JSON object (see details at /start route)
+# - "author": JSON object (see details at /block/:blockId/author route)
+
+GET     /block/:blockId             @api.read.ReadController.block(blockId: BlockId)
+
+# Returns the author of a Block.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "userId": string (the user id of the user)
+# - "timestamp": number (the creation time of the user)
+# - "foreignId": string
+# - "name": string
+
+GET     /block/:blockId/author      @api.read.ReadController.author(blockId: BlockId)
+
+# Returns the incoming connections to a Block from other Blocks.
+#
+# The body of the returned HTTP response is an array of JSON objects, each with fields:
+# - "connection": JSON object (the arrow)
+# - "blockId": string (the block id of the connecting Block)
+#
+# The connection JSON object consists of fields:
+# - "userId": string (the user id of the user that created the arrow)
+# - "timestamp": number (the creation time of the arrow)
+# - "arrow": "LINK"
+
+GET     /block/:blockId/incoming    @api.read.ReadController.incoming(blockId: BlockId)
+
+# Returns the outgoing connections from a Block to other Blocks.
+#
+# The body of the returned HTTP response is an array of JSON objects, each with fields:
+# - "connection": JSON object (the arrow, see details at /block/:blockId/incoming route)
+# - "blockId": string (the block id of the connecting Block)
+
+GET     /block/:blockId/outgoing    @api.read.ReadController.outgoing(blockId: BlockId)
+
+# Returns VIEW type arrows to a Block.
+#
+# The body of the returned HTTP response is an array of JSON objects, each with fields:
+# - "userId": string (the user id of the viewer)
+# - "timestamp": number (the creation time of the view arrow)
+# - "arrow": "VIEW"
+
+GET     /block/:blockId/views       @api.read.ReadController.views(blockId: BlockId)
+
+# Returns an array of block objects, that are connected by LINK arrows, forming a path in the graph.
+#
+# Requires "blockIds" url parameter, with the block id(s) of block(s).
+#
+# The body of the returned HTTP response is a JSON array of block JSON objects (see details
+# at /block/:blockId route).
+
+GET     /path                       @api.read.ReadController.path(blockIds: Seq[BlockId])
 
 
-GET     /block/:blockId/views       @api.messaging.MessagingController.views(blockId: BlockId)
-GET     /block/:blockId/outgoing    @api.messaging.MessagingController.outgoing(blockId: BlockId)
+
+
+##################
+# MESSAGING ROUTES
+##################
+
+GET     /block/:blockId/views/messaging     @api.messaging.MessagingController.views(blockId: BlockId)
+GET     /block/:blockId/outgoing/messaging  @api.messaging.MessagingController.outgoing(blockId: BlockId)

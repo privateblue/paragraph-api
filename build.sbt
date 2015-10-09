@@ -1,4 +1,4 @@
-name := "paragraph"
+name := "paragraph-api"
 
 scalaVersion := "2.11.7"
 
