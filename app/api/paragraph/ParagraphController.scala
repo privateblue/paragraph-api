@@ -65,7 +65,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             	if (result.getQueryStatistics.containsUpdates) blockId
             	else throw NeoException("Block has not been created")
             }.program
-    	    messaging <- Messages.send("started", model.paragraph.Started(userId, timestamp, title, blockBody)).program
+    	    messaging <- Messages.send("started", model.paragraph.Started(blockId, userId, timestamp, title, blockBody)).program
         } yield result
 
         Program.run(prg, global.env)
@@ -91,7 +91,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             	if (result.getQueryStatistics.containsUpdates) blockId
             	else throw NeoException("Append failed")
             }.program
-    	    messaging <- Messages.send("appended", model.paragraph.Appended(userId, timestamp, target, title, blockBody)).program
+    	    messaging <- Messages.send("appended", model.paragraph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
         } yield result
 
         Program.run(prg, global.env)
@@ -117,7 +117,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
             	if (result.getQueryStatistics.containsUpdates) blockId
             	else throw NeoException("Prepend failed")
             }.program
-    	    messaging <- Messages.send("prepended", model.paragraph.Prepended(userId, timestamp, target, title, blockBody)).program
+    	    messaging <- Messages.send("prepended", model.paragraph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
         } yield result
 
         Program.run(prg, global.env)

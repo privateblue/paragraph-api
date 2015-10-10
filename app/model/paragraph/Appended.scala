@@ -7,6 +7,7 @@ import play.api.libs.json._
 import play.core.websocket.BasicFrameFormatter
 
 case class Appended(
+    blockId: BlockId,
     userId: UserId,
     timestamp: Long,
     target: BlockId,
@@ -16,8 +17,8 @@ case class Appended(
 
 object Appended {
     implicit val appendedFormat = Json.format[Appended]
-    // implicit val appendedFrameFormatter = BasicFrameFormatter.textFrame.transform[Appended](
-    //     fba = (appended => Json.toJson(appended).toString),
-    //     fab = (text => Json.parse(text).as[Appended])
-    // )
+    implicit val appendedFrameFormatter = BasicFrameFormatter.textFrame.transform[Appended](
+        fba = (appended => Json.toJson(appended).toString),
+        fab = (text => Json.parse(text).as[Appended])
+    )
 }

@@ -238,5 +238,5 @@ GET     /path                       @api.read.ReadController.path(blockIds: Seq[
 # MESSAGING ROUTES
 ##################
 
-GET     /block/:blockId/views/messaging     @api.messaging.MessagingController.views(blockId: BlockId)
-GET     /block/:blockId/outgoing/messaging  @api.messaging.MessagingController.outgoing(blockId: BlockId)
+GET     /block/:blockId/viewed/subscribe    @api.messaging.MessagingController.viewed(blockId: BlockId)
+GET     /block/:blockId/appended/subscribe  @api.messaging.MessagingController.appended(blockId: BlockId)

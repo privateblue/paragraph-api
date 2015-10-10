@@ -41,7 +41,7 @@ object Messages {
             topic = topic,
             groupId = IdGenerator.key,
             decoder = new StringDecoder
-        ))
+        ).readFromEndOfStream())
         val src = Source(publisher).map(msg => Json.parse(msg.message).as[T])
         fn(src)
     }

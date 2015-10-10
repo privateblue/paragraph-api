@@ -14,8 +14,8 @@ case class Viewed(
 
 object Viewed {
     implicit val viewedFormat = Json.format[Viewed]
-    // implicit val viewedFrameFormatter = BasicFrameFormatter.textFrame.transform[Viewed](
-    //     fba = (viewed => Json.toJson(viewed).toString),
-    //     fab = (text => Json.parse(text).as[Viewed])
-    // )
+    implicit val viewedFrameFormatter = BasicFrameFormatter.textFrame.transform[Viewed](
+        fba = (viewed => Json.toJson(viewed).toString),
+        fab = (text => Json.parse(text).as[Viewed])
+    )
 }
