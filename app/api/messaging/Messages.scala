@@ -18,9 +18,6 @@ import akka.stream.Materializer
 
 import play.api.libs.json._
 
-import scala.concurrent.Future
-import scala.concurrent.Promise
-
 object Messages {
     def send[T](topic: String, msg: T)(implicit writes: Writes[T], system: ActorSystem, mat: Materializer) = Command { kafka =>
         val subscriber = kafka.publish(ProducerProperties(
