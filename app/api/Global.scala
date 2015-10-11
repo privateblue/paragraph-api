@@ -77,6 +77,7 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
         for {
             _ <- Future { db.shutdown() }
             _ <- Future { redisSystem.shutdown() }
+            _ <- Future { kafkaSystem.shutdown() }
         } yield ()
     }
 }
