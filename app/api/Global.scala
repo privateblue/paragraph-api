@@ -14,7 +14,10 @@ import org.neo4j.logging.slf4j.Slf4jLogProvider
 
 import redis.RedisClient
 
+import com.softwaremill.react.kafka.ReactiveKafka
+
 import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.inject.ApplicationLifecycle
@@ -38,14 +41,22 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
             .setUserLogProvider(new Slf4jLogProvider)
             .newEmbeddedDatabase(config.neoPath)
 
-    private val redisSystem = ActorSystem("Redis")
+    private val redisSystem = ActorSystem("redis")
     private val redis = RedisClient(
         config.redisHost,
         config.redisPort,
         config.redisPassword
     )(redisSystem)
 
-    val env = Env(db, redis)
+    private val kafka = new ReactiveKafka(
+        config.kafkaBrokers,
+        config.zkConnect
+    )
+
+    implicit val kafkaSystem = ActorSystem("reactive-kafka")
+    val kafkaMaterializer = ActorMaterializer()
+
+    val env = Env(db, redis, kafka)
 
     import api.base.NeoModel._
     val init = for {
@@ -66,6 +77,7 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
         for {
             _ <- Future { db.shutdown() }
             _ <- Future { redisSystem.shutdown() }
+            _ <- Future { kafkaSystem.shutdown() }
         } yield ()
     }
 }

@@ -7,7 +7,9 @@ case class Config(
     redisHost: String,
     redisPort: Int,
     redisPassword: Option[String],
-    sessionExpire: Long
+    sessionExpire: Long,
+    zkConnect: String,
+    kafkaBrokers: String
 )
 
 object Config {
@@ -22,6 +24,8 @@ object Config {
         }.toOption,
         sessionExpire = \/.fromTryCatchNonFatal {
             config.getString("session-expire").toLong
-        }.getOrElse(0L)
+        }.getOrElse(0L),
+        zkConnect = config.getString("kafka.consumer.zookeeper.connect"),
+        kafkaBrokers = config.getString("kafka.producer.bootstrap.servers")
     )
 }

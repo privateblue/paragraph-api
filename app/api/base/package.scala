@@ -17,13 +17,18 @@ package object base {
             }
     }
 
-    implicit class FromQuery[T](query: neo.Query.Exec[T]) {
+    implicit class FromNeoQuery[T](query: neo.Query.Exec[T]) {
         def program(implicit ec: ExecutionContext): Program[T] =
             neo.Query.transaction(query).mapK[AsyncErr, T](v => EitherT(Future(v))).local(_.db)
     }
 
-    implicit class FromCommand[T](command: redis.Command.Exec[T]) {
+    implicit class FromRedisCommand[T](command: redis.Command.Exec[T]) {
         def program(implicit ec: ExecutionContext): Program[T] =
             command.mapK[AsyncErr, T](f => EitherT(f.map(\/.right))).local(_.redis)
+    }
+
+    implicit class FromKafka[T](out: kafka.Command.Exec[T]) {
+        def program: Program[T] =
+            out.mapK[AsyncErr, T](v => EitherT(Future.successful(v))).local(_.kafka)
     }
 }
