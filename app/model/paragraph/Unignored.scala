@@ -4,12 +4,12 @@ import model.base._
 
 import play.api.libs.json._
 
-case class Blocked(
+case class Unignored(
     userId: UserId,
     timestamp: Long,
     target: UserId
 )
 
-object Blocked {
-    implicit val blockedFormat = Json.format[Blocked]
+object Unignored {
+    implicit val unignoredFormat = Json.format[Unignored]
 }

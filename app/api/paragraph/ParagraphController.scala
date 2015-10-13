@@ -196,36 +196,36 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         Program.run(prg, global.env)
     }
 
-    def block = Actions.authenticated { (userId, timestamp, body) =>
+    def ignore = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.User} {${Prop.UserId =:= target}})
-                          MERGE (a)-[block:${Arrow.Block}]->(b)
-                          ON CREATE SET ${Prop.UserId =:= userId of "block"},
-                                        ${Prop.Timestamp =:= timestamp of "block"}"""
+                          MERGE (a)-[ignore:${Arrow.Ignore}]->(b)
+                          ON CREATE SET ${Prop.UserId =:= userId of "ignore"},
+                                        ${Prop.Timestamp =:= timestamp of "ignore"}"""
 
         val prg = for {
     	    result <- Query.result(query) { result =>
             	if (result.getQueryStatistics.containsUpdates) ()
-            	else throw NeoException("Already blocked")
+            	else throw NeoException("Already ignored")
             }.program
-    	    messaging <- Messages.send("blocked", model.paragraph.Blocked(userId, timestamp, target)).program
+    	    messaging <- Messages.send("ignored", model.paragraph.Ignored(userId, timestamp, target)).program
         } yield result
 
         Program.run(prg, global.env)
     }
 
-    def unblock = Actions.authenticated { (userId, timestamp, body) =>
+    def unignore = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Block}]->(b:${Label.User} {${Prop.UserId =:= target}})
+        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Ignore}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
         val prg = for {
     	    result <- Query.result(query) { result =>
             	if (result.getQueryStatistics.containsUpdates) ()
-            	else throw NeoException("Unblocking has not been successful")
+            	else throw NeoException("Unignoring has not been successful")
             }.program
-    	    messaging <- Messages.send("unblocked", model.paragraph.Unblocked(userId, timestamp, target)).program
+    	    messaging <- Messages.send("unignored", model.paragraph.Unignored(userId, timestamp, target)).program
         } yield result
 
         Program.run(prg, global.env)

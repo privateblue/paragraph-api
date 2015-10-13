@@ -140,29 +140,29 @@ POST    /follow     @api.paragraph.ParagraphController.follow
 
 POST    /unfollow   @api.paragraph.ParagraphController.unfollow
 
-# Blocks a user by the current user.
+# Ignores a user by the current user.
 #
 # The body of the HTTP request is a JSON object, with fields:
-# - "target": string, non unique, required (the user id of the user being blocked)
+# - "target": string, non unique, required (the user id of the user being ignored)
 #
 # Requires "token" url parameter, with a valid session token, identifying the current user.
 #
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": "success"
 
-POST    /block      @api.paragraph.ParagraphController.block
+POST    /ignore     @api.paragraph.ParagraphController.ignore
 
-# Unblocks a user by the current user.
+# Unignores a user by the current user.
 #
 # The body of the HTTP request is a JSON object, with fields:
-# - "target": string, non unique, required (the user id of the user being unblocked)
+# - "target": string, non unique, required (the user id of the user being unignored)
 #
 # Requires "token" url parameter, with a valid session token, identifying the current user.
 #
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": "success"
 
-POST    /unblock    @api.paragraph.ParagraphController.unblock
+POST    /unignore   @api.paragraph.ParagraphController.unignore
 
 
 
