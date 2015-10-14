@@ -11,8 +11,7 @@ libraryDependencies ++= Seq(
     "com.etaty.rediscala" %% "rediscala" % "1.4.0",
     "org.mindrot" % "jbcrypt" % "0.3m",
     "com.fasterxml.uuid" % "java-uuid-generator" % "3.1.3",
-    "com.softwaremill.reactivekafka" %% "reactive-kafka-core" % "0.8.1",
-    "com.typesafe.play" %% "play-streams-experimental" % "2.4.2"
+    "com.softwaremill.reactivekafka" %% "reactive-kafka-core" % "0.8.1"
 )
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)

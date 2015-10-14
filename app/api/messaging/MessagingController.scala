@@ -4,18 +4,11 @@ import api.base._
 
 import model.base.BlockId
 
-import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.Source
 
 import play.api.mvc._
-import play.api.mvc.WebSocket.FrameFormatter
 import play.api.libs.json._
-import play.api.libs.iteratee.Iteratee
-import play.api.libs.iteratee.Enumerator
-import play.api.libs.streams.Streams
 import play.api.libs.concurrent.Execution.Implicits._
-
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 
 class MessagingController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     implicit val kafkaSystem = global.kafkaSystem
@@ -27,14 +20,11 @@ class MessagingController @javax.inject.Inject() (implicit global: api.Global) e
     def appended(blockId: BlockId) =
         eventsOf[model.paragraph.Appended]("appended", blockId, _.target)
 
-    private def eventsOf[T: Format : FrameFormatter](topic: String, blockId: BlockId, key: T => BlockId) =
-        WebSocket.using[T] { request =>
-            val in = Iteratee.ignore[T]
-            val prg = Messages.listen[T, (Iteratee[T, _], Enumerator[T])](topic) { source =>
-                val events = source.filter(e => key(e) == blockId)
-                val out = Streams.publisherToEnumerator(events.runWith(Sink.publisher))
-                (in, out)
+    private def eventsOf[T: Format](topic: String, blockId: BlockId, key: T => BlockId) =
+        Actions.socket[T] {
+            val prg = Messages.listen[T, Source[T, _]](topic) { source =>
+                source.filter(e => key(e) == blockId)
             }.program
-            Await.result(Program.run(prg, global.env), Duration.Inf)
+            Program.run(prg, global.env)
         }
 }
