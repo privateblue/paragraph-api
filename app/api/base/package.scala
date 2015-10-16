@@ -7,13 +7,19 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 
 package object base {
+    def validate[T](validation: ValidationNel[Throwable, T]): T =
+        validation.fold(
+            fail = es => throw ApiError(500, es.list.map(_.getMessage).mkString(", \n")),
+            succ = t => t
+        )
+
     type AsyncErr[T] = EitherT[Future, Throwable, T]
     type Program[T] = Kleisli[AsyncErr, Env, T]
 
     object Program {
         val noop: Program[Unit] = Kleisli[AsyncErr, Env, Unit](_ => EitherT(Future.successful(().right)))
 
-        def run[T](program: Program[T], env: Env)(implicit ec: ExecutionContext): Future[T] = 
+        def run[T](program: Program[T], env: Env)(implicit ec: ExecutionContext): Future[T] =
             program(env).run.flatMap {
                 case -\/(e) => Future.failed(e)
                 case \/-(res) => Future.successful(res)

@@ -83,12 +83,6 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         Option(node).getOrElse(throw ApiError(404, s"Block $blockId not found"))
     }
 
-    private def validate[T](read: ValidationNel[Throwable, T]): T =
-        read.fold(
-            fail = es => throw ApiError(500, es.list.map(_.getMessage).mkString(", \n")),
-            succ = t => t
-        )
-
     private def nodeToBlock(node: Node): ValidationNel[Throwable, Block] =
         if (node.getLabels.toSeq.contains(Label.Block)) {
             val readBlockId = Prop.BlockId from node
