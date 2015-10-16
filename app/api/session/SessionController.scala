@@ -14,8 +14,6 @@ import play.api.libs.concurrent.Execution.Implicits._
 
 import scalaz.std.scalaFuture._
 
-import scala.collection.JavaConversions._
-
 class SessionController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
 
