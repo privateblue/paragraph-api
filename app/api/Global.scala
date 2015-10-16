@@ -22,7 +22,8 @@ import akka.stream.ActorMaterializer
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.inject.ApplicationLifecycle
 
-import scalaz.std.scalaFuture._
+import scalaz._
+import Scalaz._
 
 import scala.collection.JavaConversions._
 
