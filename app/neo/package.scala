@@ -10,23 +10,17 @@ package object neo {
                     case ((Arrow(name)::rest, Query(q, params), c), cur) =>
                         (rest, Query(s"$q$name$cur", params), c)
 
-                    case ((Property(name)::rest, Query(q, params), c), cur) =>
-                        (rest, Query(s"$q$name$cur", params), c)
+                    case ((Property(name, identifier)::rest, Query(q, params), c), cur) =>
+                        val id = identifier.map(i => s"$i.").getOrElse("")
+                        (rest, Query(s"$q$id$name$cur", params), c)
 
-                    case ((PropertyValue.NonEmpty(name, NeoValue(underlying))::rest, Query(q, params), c), cur) =>
+                    case ((PropertyValue.NonEmpty(identifier, name, value)::rest, Query(q, params), c), cur) =>
                         val pName = s"p$c"
-                        (rest, Query(s"$q$name:{$pName}$cur", params + (pName -> underlying)), c + 1)
-
-                    case ((PropertyValue.Aliased(alias, name, NeoValue(underlying))::rest, Query(q, params), c), cur) =>
-                        val pName = s"p$c"
-                        (rest, Query(s"$q$alias.$name={$pName}$cur", params + (pName -> underlying)), c + 1)
+                        val expr = identifier.map(i => s"$i.$name={$pName}").getOrElse(s"$name:{$pName}")
+                        (rest, Query(s"$q$expr$cur", params + (pName -> value)), c + 1)
 
                     case ((PropertyValue.Empty::rest, Query(q, params), c), cur) =>
                         (rest, Query(s"$q$cur", params), c)
-
-                    case ((NeoValue(underlying)::rest, Query(q, params), c), cur) =>
-                        val pName = s"p$c"
-                        (rest, Query(s"$q{$pName}$cur", params + (pName -> underlying)), c + 1)
 
                     case ((other::rest, Query(q, params), c), cur) =>
                         (rest, Query(s"$q$other$cur", params), c)

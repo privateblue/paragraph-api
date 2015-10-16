@@ -79,7 +79,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         loadBlockNode(blockId).map(nodeToBlock _ andThen validate _)
 
     private def loadBlockNode(blockId: BlockId): Query.Exec[Node] = Query.lift { db =>
-        val node = db.findNode(Label.Block, Prop.BlockId.name, NeoValue(blockId).underlying)
+        val node = db.findNode(Label.Block, Prop.BlockId.name, NeoValue.toNeo(blockId))
         Option(node).getOrElse(throw ApiError(404, s"Block $blockId not found"))
     }
 

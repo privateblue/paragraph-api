@@ -1,70 +1,20 @@
 package neo
 
-sealed trait NeoValue {
-    def underlying: AnyRef = this match {
-        case BooleanValue(value) => value.asInstanceOf[AnyRef]
-        case ByteValue(value) => value.asInstanceOf[AnyRef]
-        case ShortValue(value) => value.asInstanceOf[AnyRef]
-        case IntValue(value) => value.asInstanceOf[AnyRef]
-        case LongValue(value) => value.asInstanceOf[AnyRef]
-        case FloatValue(value) => value.asInstanceOf[AnyRef]
-        case DoubleValue(value) => value.asInstanceOf[AnyRef]
-        case CharValue(value) => value.asInstanceOf[AnyRef]
-        case StringValue(value) => value.asInstanceOf[AnyRef]
-        case ArrayValue(value) => value.map(_.underlying).toArray
-    }
+import org.neo4j.graphdb.PropertyContainer
 
-    override def toString = underlying.toString
-}
-case class BooleanValue(value: Boolean) extends NeoValue
-case class ByteValue(value: Byte) extends NeoValue
-case class ShortValue(value: Short) extends NeoValue
-case class IntValue(value: Int) extends NeoValue
-case class LongValue(value: Long) extends NeoValue
-case class FloatValue(value: Float) extends NeoValue
-case class DoubleValue(value: Double) extends NeoValue
-case class CharValue(value: Char) extends NeoValue
-case class StringValue(value: String) extends NeoValue
-case class ArrayValue(value: Seq[NeoValue]) extends NeoValue
+import scalaz._
 
 object NeoValue {
-    def apply[T: NeoValueWrites](v: T) = implicitly[NeoValueWrites[T]].write(v)
-    def unapply(nv: NeoValue): Option[AnyRef] = Some(nv.underlying)
-}
+    def toNeo[T](value: T)(implicit writer: PropertyWriter[T]): AnyRef = writer.write(value)
 
-trait NeoValueWrites[-T] {
-    def write(v: T): NeoValue
-}
+    def fromNeo[T](value: AnyRef)(implicit reader: PropertyReader[T]): T = reader.read(value)
 
-object NeoValueWrites {
-    implicit object BooleanWrites extends NeoValueWrites[Boolean] {
-        def write(v: Boolean) = BooleanValue(v)
-    }
-    implicit object ByteWrites extends NeoValueWrites[Byte] {
-        def write(v: Byte) = ByteValue(v)
-    }
-    implicit object ShortWrites extends NeoValueWrites[Short] {
-        def write(v: Short) = ShortValue(v)
-    }
-    implicit object IntWrites extends NeoValueWrites[Int] {
-        def write(v: Int) = IntValue(v)
-    }
-    implicit object LongWrites extends NeoValueWrites[Long] {
-        def write(v: Long) = LongValue(v)
-    }
-    implicit object FloatWrites extends NeoValueWrites[Float] {
-        def write(v: Float) = FloatValue(v)
-    }
-    implicit object DoubleWrites extends NeoValueWrites[Double] {
-        def write(v: Double) = DoubleValue(v)
-    }
-    implicit object CharWrites extends NeoValueWrites[Char] {
-        def write(v: Char) = CharValue(v)
-    }
-    implicit object StringWrites extends NeoValueWrites[String] {
-        def write(v: String) = StringValue(v)
-    }
-    implicit def traversableWrites[T: NeoValueWrites] = new NeoValueWrites[Traversable[T]] {
-        def write(v: Traversable[T]) = ArrayValue(v.map(NeoValue(_)).toSeq)
-    }
+    def fromPropertyContainer[T: PropertyReader](name: String, container: PropertyContainer): ValidationNel[Throwable, T] =
+        Validation.fromTryCatchNonFatal[T] {
+            val value = container.getProperty(name)
+            fromNeo(value)
+        }.toValidationNel
+
+    def fromRow[T: PropertyReader](name: String, row: Map[String, AnyRef]) =
+        row.get(name).map(fromNeo(_))
 }

@@ -1,8 +1,7 @@
 package model.base
 
-import neo.NeoValue
-import neo.NeoValueWrites
 import neo.PropertyReader
+import neo.PropertyWriter
 
 import play.api.mvc._
 import play.api.libs.json._
@@ -14,13 +13,9 @@ case class BlockId(val key: String) extends Id[String] {
 }
 
 object BlockId {
-    implicit object BlockIdWrites extends NeoValueWrites[BlockId] {
-        def write(v: BlockId) = NeoValue(v.key)
-    }
+    implicit val blockIdWriter = implicitly[PropertyWriter[String]].contramap[BlockId](_.key)
 
-    implicit object BlockIdReader extends PropertyReader[BlockId] {
-        def read(v: AnyRef) = BlockId(implicitly[PropertyReader[String]].read(v))
-    }
+    implicit val blockIdReader = implicitly[PropertyReader[String]].map(BlockId.apply)
 
     implicit val blockIdFormat = new Format[BlockId] {
         def reads(json: JsValue) = JsSuccess(BlockId(json.as[String]))

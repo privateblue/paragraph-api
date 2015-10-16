@@ -129,8 +129,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId =:= from}}),
                                 (b:${Label.Block} {${Prop.BlockId =:= to}})
                           MERGE (a)-[link:${Arrow.Link}]->(b)
-                          ON CREATE SET ${Prop.UserId =:= userId of "link"},
-                                        ${Prop.Timestamp =:= timestamp of "link"}"""
+                          ON CREATE SET ${"link" >>: Prop.UserId =:= userId},
+                                        ${"link" >>: Prop.Timestamp =:= timestamp}"""
 
         val prg = for {
     	    result <- Query.result(query) { result =>
@@ -149,8 +149,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                 (b:${Label.Block} {${Prop.BlockId =:= target}})
                           WHERE NOT (a)-[:${Arrow.Author}]->(b)
                           MERGE (a)-[view:${Arrow.View}]->(b)
-                          ON CREATE SET ${Prop.UserId =:= userId of "view"},
-                                        ${Prop.Timestamp =:= timestamp of "view"}"""
+                          ON CREATE SET ${"view" >>: Prop.UserId =:= userId},
+                                        ${"view" >>: Prop.Timestamp =:= timestamp}"""
 
         val prg = for {
             added <- Query.result(query)(_.getQueryStatistics.containsUpdates).program
@@ -166,8 +166,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.User} {${Prop.UserId =:= target}})
                           MERGE (a)-[follow:${Arrow.Follow}]->(b)
-                          ON CREATE SET ${Prop.UserId =:= userId of "follow"},
-                                        ${Prop.Timestamp =:= timestamp of "follow"}"""
+                          ON CREATE SET ${"follow" >>: Prop.UserId =:= userId},
+                                        ${"follow" >>: Prop.Timestamp =:= timestamp}"""
 
         val prg = for {
     	    result <- Query.result(query) { result =>
@@ -201,8 +201,8 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.User} {${Prop.UserId =:= target}})
                           MERGE (a)-[ignore:${Arrow.Ignore}]->(b)
-                          ON CREATE SET ${Prop.UserId =:= userId of "ignore"},
-                                        ${Prop.Timestamp =:= timestamp of "ignore"}"""
+                          ON CREATE SET ${"ignore" >>: Prop.UserId =:= userId},
+                                        ${"ignore" >>: Prop.Timestamp =:= timestamp}"""
 
         val prg = for {
     	    result <- Query.result(query) { result =>
