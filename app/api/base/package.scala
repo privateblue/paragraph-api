@@ -1,6 +1,7 @@
 package api
 
 import scalaz._
+import Scalaz._
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
@@ -10,7 +11,9 @@ package object base {
     type Program[T] = Kleisli[AsyncErr, Env, T]
 
     object Program {
-        def run[T](program: Program[T], env: Env)(implicit ec: ExecutionContext): Future[T] =
+        val noop: Program[Unit] = Kleisli[AsyncErr, Env, Unit](_ => EitherT(Future.successful(().right)))
+
+        def run[T](program: Program[T], env: Env)(implicit ec: ExecutionContext): Future[T] = 
             program(env).run.flatMap {
                 case -\/(e) => Future.failed(e)
                 case \/-(res) => Future.successful(res)
