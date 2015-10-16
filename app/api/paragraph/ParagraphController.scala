@@ -9,7 +9,6 @@ import model.base._
 
 import neo._
 
-import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Result
 
 import org.mindrot.jbcrypt.BCrypt
@@ -35,19 +34,21 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val password = (body \ "password").as[String]
         val hash = BCrypt.hashpw(password, BCrypt.gensalt)
         val userId = UserId(IdGenerator.key)
+
         val query = neo"""CREATE (a:${Label.User} {${Prop.UserId =:= userId},
                                                    ${Prop.Timestamp =:= timestamp},
                                                    ${Prop.UserForeignId =:= foreignId},
                                                    ${Prop.UserName =:= name},
                                                    ${Prop.UserPassword =:= hash}})"""
 
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) userId
+            else throw NeoException(s"User $name has not been created")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) userId
-            	else throw NeoException(s"User $name has not been created")
-            }.program
-    	    messaging <- Messages.send("registered", model.paragraph.Registered(userId, timestamp, foreignId, name, password)).program
-    	} yield result
+    	    result <- Query.result(query)(read).program
+    	    _ <- Messages.send("registered", model.paragraph.Registered(userId, timestamp, foreignId, name, password)).program
+    	} yield userId
 
         Program.run(prg, global.env)
     }
@@ -56,6 +57,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
+
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})
                           MERGE (a)-[:${Arrow.Author} {${Prop.UserId =:= userId},
                                                        ${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
@@ -64,13 +66,14 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                              ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                              ${Prop.BlockBody =:= blockBody}})"""
 
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Block has not been created")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) blockId
-            	else throw NeoException("Block has not been created")
-            }.program
-    	    messaging <- Messages.send("started", model.paragraph.Started(blockId, userId, timestamp, title, blockBody)).program
-        } yield result
+    	    result <- Query.result(query)(read).program
+    	    _ <- Messages.send("started", model.paragraph.Started(blockId, userId, timestamp, title, blockBody)).program
+        } yield blockId
 
         Program.run(prg, global.env)
     }
@@ -80,6 +83,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
+
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
                           MERGE (b)-[:${Arrow.Link} {${Prop.UserId =:= userId},
@@ -91,21 +95,19 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                                                                                  ${Prop.Timestamp =:= timestamp}}]-(a)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates && result.hasNext) {
+                val row = result.next().toMap
+                val authorId = "x" >>: Prop.UserId from row
+                val userName = "a" >>: Prop.UserName from row
+                val getData = (authorId |@| userName) { case (a, u) => (a, u) }
+                validate(getData)
+            } else throw NeoException("Append failed")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates && result.hasNext) {
-                    val row = result.next().toMap
-                    val authorId = "x" >>: Prop.UserId from row
-                    val userName = "a" >>: Prop.UserName from row
-                    val getData = (authorId |@| userName) { case (a, u) => (a, u) }
-                    validate(getData)
-            	} else throw NeoException("Append failed")
-            }.program
-
+    	    result <- Query.result(query)(read).program
             (authorId, userName) = result
-
     	    _ <- Messages.send("appended", model.paragraph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
-
             _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has replied your block", target, blockId)
                  else Program.noop
         } yield blockId
@@ -118,6 +120,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
+
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
                           MERGE (b)<-[:${Arrow.Link} {${Prop.UserId =:= userId},
@@ -129,21 +132,19 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                                                                                  ${Prop.Timestamp =:= timestamp}}]-(a)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates && result.hasNext) {
+                val row = result.next().toMap
+                val authorId = "x" >>: Prop.UserId from row
+                val userName = "a" >>: Prop.UserName from row
+                val getData = (authorId |@| userName) { case (a, u) => (a, u) }
+                validate(getData)
+            } else throw NeoException("Prepend failed")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-                if (result.getQueryStatistics.containsUpdates && result.hasNext) {
-                    val row = result.next().toMap
-                    val authorId = "x" >>: Prop.UserId from row
-                    val userName = "a" >>: Prop.UserName from row
-                    val getData = (authorId |@| userName) { case (a, u) => (a, u) }
-                    validate(getData)
-            	} else throw NeoException("Prepend failed")
-            }.program
-
+    	    result <- Query.result(query)(read).program
             (authorId, userName) = result
-
     	    _ <- Messages.send("prepended", model.paragraph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
-
             _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has shared your block", blockId, target)
                  else Program.noop
         } yield blockId
@@ -154,6 +155,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
     def link = Actions.authenticated { (userId, timestamp, body) =>
         val from = (body \ "from").as[BlockId]
         val to = (body \ "to").as[BlockId]
+
         val query = neo"""MATCH (x:${Label.User})-[:${Arrow.Author}]->(a:${Label.Block} {${Prop.BlockId =:= from}}),
                                 (y:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= to}}),
                                 (z:${Label.User} {${Prop.UserId =:= userId}})
@@ -162,25 +164,22 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                         ${"link" >>: Prop.Timestamp =:= timestamp}
                           RETURN ${"x" >>: Prop.UserId}, ${"y" >>: Prop.UserId}, ${"z" >>: Prop.UserName}"""
 
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates&& result.hasNext) {
+                val row = result.next().toMap
+                val fromAuthorId = "x" >>: Prop.UserId from row
+                val toAuthorId = "y" >>: Prop.UserId from row
+                val userName = "z" >>: Prop.UserName from row
+                val getData = (fromAuthorId |@| toAuthorId |@| userName) { case (fa, ta, u) => (fa, ta, u) }
+                validate(getData)
+            } else throw NeoException("Already linked")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates&& result.hasNext) {
-                    val row = result.next().toMap
-                    val fromAuthorId = "x" >>: Prop.UserId from row
-                    val toAuthorId = "y" >>: Prop.UserId from row
-                    val userName = "z" >>: Prop.UserName from row
-                    val getData = (fromAuthorId |@| toAuthorId |@| userName) { case (fa, ta, u) => (fa, ta, u) }
-                    validate(getData)
-            	} else throw NeoException("Already linked")
-            }.program
-
+    	    result <- Query.result(query)(read).program
             (fromAuthorId, toAuthorId, userName) = result
-
     	    _ <- Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to)).program
-
             _ <- if (userId != fromAuthorId) notify(fromAuthorId, timestamp, s"$userName has shared your block", from, to)
                  else Program.noop
-
             _ <- if (userId != toAuthorId) notify(toAuthorId, timestamp, s"$userName has shared your block", from, to)
                  else Program.noop
         } yield ()
@@ -190,6 +189,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
 
     def view = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
+
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.Block} {${Prop.BlockId =:= target}})
                           WHERE NOT (a)-[:${Arrow.Author}]->(b)
@@ -197,10 +197,13 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           ON CREATE SET ${"view" >>: Prop.UserId =:= userId},
                                         ${"view" >>: Prop.Timestamp =:= timestamp}"""
 
+        def read(result: Result) =
+            result.getQueryStatistics.containsUpdates
+
         val prg = for {
-            added <- Query.result(query)(_.getQueryStatistics.containsUpdates).program
-	        messaging <- if (added) Messages.send("viewed", model.paragraph.Viewed(userId, timestamp, target)).program
-                         else Messages.noop.program
+            result <- Query.result(query)(read).program
+	        _ <- if (result) Messages.send("viewed", model.paragraph.Viewed(userId, timestamp, target)).program
+                 else Messages.noop.program
         } yield ()
 
         Program.run(prg, global.env)
@@ -208,18 +211,20 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
 
     def follow = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
+
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.User} {${Prop.UserId =:= target}})
                           MERGE (a)-[follow:${Arrow.Follow}]->(b)
                           ON CREATE SET ${"follow" >>: Prop.UserId =:= userId},
                                         ${"follow" >>: Prop.Timestamp =:= timestamp}"""
 
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException("Already followed")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) ()
-            	else throw NeoException("Already followed")
-            }.program
-    	    messaging <- Messages.send("followed", model.paragraph.Followed(userId, timestamp, target)).program
+    	    result <- Query.result(query)(read).program
+    	    _ <- Messages.send("followed", model.paragraph.Followed(userId, timestamp, target)).program
         } yield result
 
         Program.run(prg, global.env)
@@ -227,51 +232,57 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
 
     def unfollow = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
+
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Follow}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) ()
+    	    else throw NeoException("Unfollow has not been successful")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) ()
-            	else throw NeoException("Unfollow has not been successful")
-            }.program
-    	    messaging <- Messages.send("unfollowed", model.paragraph.Unfollowed(userId, timestamp, target)).program
-        } yield result
+    	    result <- Query.result(query)(read).program
+    	    _ <- Messages.send("unfollowed", model.paragraph.Unfollowed(userId, timestamp, target)).program
+        } yield ()
 
         Program.run(prg, global.env)
     }
 
     def ignore = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
+
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.User} {${Prop.UserId =:= target}})
                           MERGE (a)-[ignore:${Arrow.Ignore}]->(b)
                           ON CREATE SET ${"ignore" >>: Prop.UserId =:= userId},
                                         ${"ignore" >>: Prop.Timestamp =:= timestamp}"""
 
+        def read(result: Result) =
+        	if (result.getQueryStatistics.containsUpdates) ()
+        	else throw NeoException("Already ignored")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) ()
-            	else throw NeoException("Already ignored")
-            }.program
-    	    messaging <- Messages.send("ignored", model.paragraph.Ignored(userId, timestamp, target)).program
-        } yield result
+    	    result <- Query.result(query)(read).program
+    	    _ <- Messages.send("ignored", model.paragraph.Ignored(userId, timestamp, target)).program
+        } yield ()
 
         Program.run(prg, global.env)
     }
 
     def unignore = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[UserId]
+
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Ignore}]->(b:${Label.User} {${Prop.UserId =:= target}})
                           DELETE r"""
 
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException("Unignoring has not been successful")
+
         val prg = for {
-    	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) ()
-            	else throw NeoException("Unignoring has not been successful")
-            }.program
-    	    messaging <- Messages.send("unignored", model.paragraph.Unignored(userId, timestamp, target)).program
-        } yield result
+    	    result <- Query.result(query)(read).program
+    	    _ <- Messages.send("unignored", model.paragraph.Unignored(userId, timestamp, target)).program
+        } yield ()
 
         Program.run(prg, global.env)
     }
