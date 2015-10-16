@@ -3,6 +3,7 @@ package api.paragraph
 import api._
 import api.base._
 import api.messaging.Messages
+import api.notification.Notifications
 
 import model.base._
 
@@ -17,7 +18,11 @@ import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
-import scalaz.std.scalaFuture._
+import scalaz._
+import Scalaz._
+//import scalaz.std.scalaFuture._
+
+import scala.collection.JavaConversions._
 
 class ParagraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
@@ -77,22 +82,34 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (b:${Label.Block} {${Prop.BlockId =:= target}})
+                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
                           MERGE (b)-[:${Arrow.Link} {${Prop.UserId =:= userId},
                                                      ${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                            ${Prop.Timestamp =:= timestamp},
                                                                                                            ${Prop.BlockTitle =:= title},
                                                                                                            ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
-                                                                                                                                                                 ${Prop.Timestamp =:= timestamp}}]-(a)"""
+                                                                                                                                                                 ${Prop.Timestamp =:= timestamp}}]-(a)
+                          RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
         val prg = for {
     	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) blockId
-            	else throw NeoException("Append failed")
+            	if (result.getQueryStatistics.containsUpdates && result.hasNext) {
+                    val row = result.next().toMap
+                    val authorId = "x" >>: Prop.UserId from row
+                    val userName = "a" >>: Prop.UserName from row
+                    val getData = (authorId |@| userName) { case (a, u) => (a, u) }
+                    validate(getData)
+            	} else throw NeoException("Append failed")
             }.program
-    	    messaging <- Messages.send("appended", model.paragraph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
-        } yield result
+
+            (authorId, userName) = result
+
+    	    _ <- Messages.send("appended", model.paragraph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
+
+            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has replied your block", target, blockId)
+                 else Program.noop
+        } yield blockId
 
         Program.run(prg, global.env)
     }
@@ -103,22 +120,34 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (b:${Label.Block} {${Prop.BlockId =:= target}})
+                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
                           MERGE (b)<-[:${Arrow.Link} {${Prop.UserId =:= userId},
                                                       ${Prop.Timestamp =:= timestamp}}]-(c:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                            ${Prop.Timestamp =:= timestamp},
                                                                                                            ${Prop.BlockTitle =:= title},
                                                                                                            ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
-                                                                                                                                                                 ${Prop.Timestamp =:= timestamp}}]-(a)"""
+                                                                                                                                                                 ${Prop.Timestamp =:= timestamp}}]-(a)
+                          RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
         val prg = for {
     	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) blockId
-            	else throw NeoException("Prepend failed")
+                if (result.getQueryStatistics.containsUpdates && result.hasNext) {
+                    val row = result.next().toMap
+                    val authorId = "x" >>: Prop.UserId from row
+                    val userName = "a" >>: Prop.UserName from row
+                    val getData = (authorId |@| userName) { case (a, u) => (a, u) }
+                    validate(getData)
+            	} else throw NeoException("Prepend failed")
             }.program
-    	    messaging <- Messages.send("prepended", model.paragraph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
-        } yield result
+
+            (authorId, userName) = result
+
+    	    _ <- Messages.send("prepended", model.paragraph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
+
+            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has shared your block", blockId, target)
+                 else Program.noop
+        } yield blockId
 
         Program.run(prg, global.env)
     }
@@ -126,19 +155,36 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
     def link = Actions.authenticated { (userId, timestamp, body) =>
         val from = (body \ "from").as[BlockId]
         val to = (body \ "to").as[BlockId]
-        val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId =:= from}}),
-                                (b:${Label.Block} {${Prop.BlockId =:= to}})
+        val query = neo"""MATCH (x:${Label.User})-[:${Arrow.Author}]->(a:${Label.Block} {${Prop.BlockId =:= from}}),
+                                (y:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= to}}),
+                                (z:${Label.User} {${Prop.UserId =:= userId}})
                           MERGE (a)-[link:${Arrow.Link}]->(b)
                           ON CREATE SET ${"link" >>: Prop.UserId =:= userId},
-                                        ${"link" >>: Prop.Timestamp =:= timestamp}"""
+                                        ${"link" >>: Prop.Timestamp =:= timestamp}
+                          RETURN ${"x" >>: Prop.UserId}, ${"y" >>: Prop.UserId}, ${"z" >>: Prop.UserName}"""
 
         val prg = for {
     	    result <- Query.result(query) { result =>
-            	if (result.getQueryStatistics.containsUpdates) ()
-            	else throw NeoException("Already linked")
+            	if (result.getQueryStatistics.containsUpdates&& result.hasNext) {
+                    val row = result.next().toMap
+                    val fromAuthorId = "x" >>: Prop.UserId from row
+                    val toAuthorId = "y" >>: Prop.UserId from row
+                    val userName = "z" >>: Prop.UserName from row
+                    val getData = (fromAuthorId |@| toAuthorId |@| userName) { case (fa, ta, u) => (fa, ta, u) }
+                    validate(getData)
+            	} else throw NeoException("Already linked")
             }.program
-    	    messaging <- Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to)).program
-        } yield result
+
+            (fromAuthorId, toAuthorId, userName) = result
+
+    	    _ <- Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to)).program
+
+            _ <- if (userId != fromAuthorId) notify(fromAuthorId, timestamp, s"$userName has shared your block", from, to)
+                 else Program.noop
+
+            _ <- if (userId != toAuthorId) notify(toAuthorId, timestamp, s"$userName has shared your block", from, to)
+                 else Program.noop
+        } yield ()
 
         Program.run(prg, global.env)
     }
@@ -230,5 +276,10 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
 
         Program.run(prg, global.env)
     }
+
+    private def notify(userId: UserId, timestamp: Long, text: String, from: BlockId, to: BlockId) = for {
+        notification <- Notifications.notifyAboutBlock(userId, timestamp, text, from, to).program
+        _ <- Messages.send("notification", notification).program
+    } yield ()
 
 }
