@@ -28,7 +28,7 @@ case class UserNotification(
     timestamp: Long,
     userId: UserId,
     text: String,
-    about: UserId
+    who: UserId
 ) extends Notification
 
 object Notification {
@@ -57,4 +57,9 @@ object Notification {
     implicit val notificationSerializer = implicitly[ByteStringSerializer[String]].contramap[Notification](Json.toJson(_).toString)
 
     implicit val notificationDeserializer = implicitly[ByteStringDeserializer[String]].map(Json.parse(_).as[Notification])
+
+    implicit val notificationOrdering = Ordering.by[Notification, (Long, NotificationId)] {
+        case PathNotification(id, timestamp, _, _, _) => (timestamp, id)
+        case UserNotification(id, timestamp, _, _, _) => (timestamp, id)
+    }
 }

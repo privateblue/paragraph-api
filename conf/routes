@@ -251,3 +251,46 @@ GET     /block/:blockId/viewed/subscribe    @api.read.ReadController.viewed(bloc
 # - "body": JSON object (see details at /start route)
 
 GET     /block/:blockId/appended/subscribe  @api.read.ReadController.appended(blockId: BlockId)
+
+
+
+
+#####################
+# NOTIFICATION ROUTES
+#####################
+
+# Returns all notifications of the current user.
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "type": "path" | "user"
+# - "notification": JSON object
+#
+# The "path" notification JSON object consists of fields:
+# - "notificationId": string (the notification id of the notification)
+# - "timestamp": number (the creation time of the notification)
+# - "userId": string (the user id of the addressee, the current user)
+# - "text": string
+# - "path": JSON array of strings (the block ids of blocks that the notification is about)
+#
+# The "user" notification JSON object consists of fields:
+# - "notificationId": string (the notification id of the notification)
+# - "timestamp": number (the creation time of the notification)
+# - "userId": string (the user id of the addressee, the current user)
+# - "text": string
+# - "who": string (the user id of the user that the notification is about)
+
+GET     /notification/get       @api.notification.NotificationController.get
+
+# Dismisses (deletes) a notification.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "notificationId": string, unique, required (the notification id of the notification to dismiss)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success"
+
+POST    /notification/dismiss   @api.notification.NotificationController.dismiss

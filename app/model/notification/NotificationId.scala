@@ -35,4 +35,6 @@ object NotificationId {
     implicit val notificationIdSerializer = implicitly[ByteStringSerializer[String]].contramap[NotificationId](_.key)
 
     implicit val notificationIdDeserializer = implicitly[ByteStringDeserializer[String]].map(NotificationId.apply)
+
+    implicit val notificationIdOrdering = Ordering.by[NotificationId, String](_.key)
 }

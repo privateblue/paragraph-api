@@ -107,7 +107,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
     	    result <- Query.result(query)(read).program
             (authorId, userName) = result
     	    _ <- Messages.send("appended", model.paragraph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
-            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has replied your block", target, blockId)
+            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has replied to your block", target, blockId)
                  else Program.noop
         } yield blockId
 
@@ -177,9 +177,9 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
     	    result <- Query.result(query)(read).program
             (fromAuthorId, toAuthorId, userName) = result
     	    _ <- Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to)).program
-            _ <- if (userId != fromAuthorId) notify(fromAuthorId, timestamp, s"$userName has shared your block", from, to)
+            _ <- if (userId != fromAuthorId) notify(fromAuthorId, timestamp, s"$userName has linked your block", from, to)
                  else Program.noop
-            _ <- if (userId != toAuthorId) notify(toAuthorId, timestamp, s"$userName has shared your block", from, to)
+            _ <- if (userId != toAuthorId) notify(toAuthorId, timestamp, s"$userName has linked your block", from, to)
                  else Program.noop
         } yield ()
 
