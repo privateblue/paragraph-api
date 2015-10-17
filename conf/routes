@@ -180,7 +180,7 @@ POST    /unignore   @api.paragraph.ParagraphController.unignore
 # - "body": JSON object (see details at /start route)
 # - "author": JSON object (see details at /block/:blockId/author route)
 
-GET     /block/:blockId             @api.read.ReadController.block(blockId: BlockId)
+GET     /block/:blockId                     @api.read.ReadController.block(blockId: BlockId)
 
 # Returns the author of a Block.
 #
@@ -190,7 +190,7 @@ GET     /block/:blockId             @api.read.ReadController.block(blockId: Bloc
 # - "foreignId": string
 # - "name": string
 
-GET     /block/:blockId/author      @api.read.ReadController.author(blockId: BlockId)
+GET     /block/:blockId/author              @api.read.ReadController.author(blockId: BlockId)
 
 # Returns the incoming connections to a Block from other Blocks.
 #
@@ -203,7 +203,7 @@ GET     /block/:blockId/author      @api.read.ReadController.author(blockId: Blo
 # - "timestamp": number (the creation time of the arrow)
 # - "arrow": "LINK"
 
-GET     /block/:blockId/incoming    @api.read.ReadController.incoming(blockId: BlockId)
+GET     /block/:blockId/incoming            @api.read.ReadController.incoming(blockId: BlockId)
 
 # Returns the outgoing connections from a Block to other Blocks.
 #
@@ -211,7 +211,7 @@ GET     /block/:blockId/incoming    @api.read.ReadController.incoming(blockId: B
 # - "connection": JSON object (the arrow, see details at /block/:blockId/incoming route)
 # - "blockId": string (the block id of the connecting Block)
 
-GET     /block/:blockId/outgoing    @api.read.ReadController.outgoing(blockId: BlockId)
+GET     /block/:blockId/outgoing            @api.read.ReadController.outgoing(blockId: BlockId)
 
 # Returns VIEW type arrows to a Block.
 #
@@ -220,7 +220,7 @@ GET     /block/:blockId/outgoing    @api.read.ReadController.outgoing(blockId: B
 # - "timestamp": number (the creation time of the view arrow)
 # - "arrow": "VIEW"
 
-GET     /block/:blockId/views       @api.read.ReadController.views(blockId: BlockId)
+GET     /block/:blockId/views               @api.read.ReadController.views(blockId: BlockId)
 
 # Returns an array of block objects, that are connected by LINK arrows, forming a path in the graph.
 #
@@ -229,14 +229,7 @@ GET     /block/:blockId/views       @api.read.ReadController.views(blockId: Bloc
 # The body of the returned HTTP response is a JSON array of block JSON objects (see details
 # at /block/:blockId route).
 
-GET     /path                       @api.read.ReadController.path(blockIds: Seq[BlockId])
-
-
-
-
-##################
-# MESSAGING ROUTES
-##################
+GET     /path                               @api.read.ReadController.path(blockIds: Seq[BlockId])
 
 # Opens a websocket connection to receive a Viewed JSON object on every view of this block.
 #
@@ -245,7 +238,7 @@ GET     /path                       @api.read.ReadController.path(blockIds: Seq[
 # - "timestamp": number (the view time)
 # - "target": string (the block id of the viewed block)
 
-GET     /block/:blockId/viewed/subscribe    @api.messaging.MessagingController.viewed(blockId: BlockId)
+GET     /block/:blockId/viewed/subscribe    @api.read.ReadController.viewed(blockId: BlockId)
 
 # Opens a websocket connection to receive an Appended JSON object on every appended block to this block.
 #
@@ -257,4 +250,4 @@ GET     /block/:blockId/viewed/subscribe    @api.messaging.MessagingController.v
 # - "title": string (optional)
 # - "body": JSON object (see details at /start route)
 
-GET     /block/:blockId/appended/subscribe  @api.messaging.MessagingController.appended(blockId: BlockId)
+GET     /block/:blockId/appended/subscribe  @api.read.ReadController.appended(blockId: BlockId)

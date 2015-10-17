@@ -1,6 +1,7 @@
 package api.read
 
 import api.base._
+import api.messaging.Messages
 
 import model.base._
 import model.read._
@@ -11,7 +12,10 @@ import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.Direction
 
+import akka.stream.scaladsl.Source
+
 import play.api.mvc._
+import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
 import scalaz._
@@ -74,6 +78,23 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         }
         Program.run(query.program, global.env)
     }
+
+    implicit val kafkaSystem = global.kafkaSystem
+    implicit val kafkaMaterializer = global.kafkaMaterializer
+
+    def viewed(blockId: BlockId) =
+        eventsOf[model.paragraph.Viewed]("viewed", blockId, _.target)
+
+    def appended(blockId: BlockId) =
+        eventsOf[model.paragraph.Appended]("appended", blockId, _.target)
+
+    private def eventsOf[T: Format](topic: String, blockId: BlockId, key: T => BlockId) =
+        Actions.socket[T] {
+            val prg = Messages.listen[T, Source[T, _]](topic) { source =>
+                source.filter(e => key(e) == blockId)
+            }.program
+            Program.run(prg, global.env)
+        }
 
     private def loadBlock(blockId: BlockId): Query.Exec[Block] =
         loadBlockNode(blockId).map(nodeToBlock _ andThen validate _)
