@@ -14,7 +14,6 @@ import org.neo4j.graphdb.Result
 import org.mindrot.jbcrypt.BCrypt
 
 import play.api.mvc._
-import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 
 import scalaz._
