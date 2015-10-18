@@ -89,7 +89,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         eventsOf[model.paragraph.Appended]("appended", blockId, _.target)
 
     private def eventsOf[T: Format](topic: String, blockId: BlockId, key: T => BlockId) =
-        Actions.socket[T] {
+        Actions.publicSocket[T] {
             val prg = Messages.listen[T, Source[T, _]](topic) { source =>
                 source.filter(e => key(e) == blockId)
             }.program
