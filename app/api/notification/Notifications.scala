@@ -5,6 +5,7 @@ import model.base.BlockId
 import model.notification._
 
 import api.base.IdGenerator
+import api.base.ApiError
 
 import redis._
 
@@ -45,6 +46,14 @@ object Notifications {
     def dismiss(notificationId: NotificationId, userId: UserId)(implicit ec: ExecutionContext): Command.Exec[Unit] =
         Command { redis =>
             for {
+                notification <- redis.get[Notification](notificationId.toString)
+                ownerId = notification match {
+                    case Some(PathNotification(_, _, userId, _, _)) => userId
+                    case Some(UserNotification(_, _, userId, _, _)) => userId
+                    case _ => throw ApiError(404, "Notification not found")
+                }
+                _ <- if (ownerId == userId) Future.successful(())
+                     else Future.failed(ApiError(401, "Permission denied"))
                 _ <- redis.srem[NotificationId](key(userId), notificationId)
                 _ <- redis.del(notificationId.toString)
             } yield ()
