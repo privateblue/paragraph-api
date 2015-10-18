@@ -33,11 +33,11 @@ object Actions {
             def success(userId: UserId) = {
                 val publicFn: Public[R, T] = fn(userId, _, _)
                 val action = public(bp)(publicFn)
-                action(request).recover {
-                    case e: Throwable => Actions.renderError(e)
-                }
+                action(request)
             }
-            authenticate(request)(success, failure)
+            authenticate(request)(success, failure).recover {
+                case e: Throwable => Actions.renderError(e)
+            }
         }
 
     def public[T: Writes](fn: (Long, JsValue) => Future[T])(implicit ec: ExecutionContext): Action[JsValue] =
