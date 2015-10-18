@@ -294,3 +294,12 @@ GET     /notification/get       @api.notification.NotificationController.get
 # - "data": "success"
 
 POST    /notification/dismiss   @api.notification.NotificationController.dismiss
+
+# Opens a websocket connection to receive a notification JSON object every time the current user
+# receives a notification.
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# See details of the notification JSON object at route /notification/get
+
+GET     /notification/subscribe @api.notification.NotificationController.subscribe
