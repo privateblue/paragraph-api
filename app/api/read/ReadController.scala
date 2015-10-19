@@ -83,15 +83,18 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     implicit val kafkaMaterializer = global.kafkaMaterializer
 
     def viewed(blockId: BlockId) =
-        eventsOf[model.paragraph.Viewed]("viewed", blockId, _.target)
+        eventsOf[model.paragraph.Viewed]("viewed", _.target == blockId)
 
     def appended(blockId: BlockId) =
-        eventsOf[model.paragraph.Appended]("appended", blockId, _.target)
+        eventsOf[model.paragraph.Appended]("appended", _.target == blockId)
 
-    private def eventsOf[T: Format](topic: String, blockId: BlockId, key: T => BlockId) =
+    def linked(blockId: BlockId) =
+        eventsOf[model.paragraph.Linked]("linked", (lnk => lnk.from == blockId || lnk.to == blockId))
+
+    private def eventsOf[T: Format](topic: String, predicate: T => Boolean) =
         Actions.publicSocket[T] {
             val prg = Messages.listen[T, Source[T, _]](topic) { source =>
-                source.filter(e => key(e) == blockId)
+                source.filter(predicate)
             }.program
             Program.run(prg, global.env)
         }

@@ -252,6 +252,16 @@ GET     /block/:blockId/viewed/subscribe    @api.read.ReadController.viewed(bloc
 
 GET     /block/:blockId/appended/subscribe  @api.read.ReadController.appended(blockId: BlockId)
 
+# Opens a websocket connection to receive a Linked JSON object on every linked block to and from this block.
+#
+# The Linked JSON object consists of fields:
+# - "userId": string (the user id of the user that created the link)
+# - "timestamp": number (the creation time of the link)
+# - "from": string (the block id of the starting block)
+# - "to": string (the block id of the end block)
+
+GET     /block/:blockId/linked/subscribe    @api.read.ReadController.linked(blockId: BlockId)
+
 
 
 
