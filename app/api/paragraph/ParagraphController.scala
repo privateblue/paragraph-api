@@ -200,7 +200,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
                 val row = result.next().toMap
-                val userName = "z" >>: Prop.UserName from row
+                val userName = "a" >>: Prop.UserName from row
                 userName.toOption
             } else None
 
