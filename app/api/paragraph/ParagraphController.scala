@@ -164,7 +164,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           RETURN ${"x" >>: Prop.UserId}, ${"y" >>: Prop.UserId}, ${"z" >>: Prop.UserName}"""
 
         def read(result: Result) =
-            if (result.getQueryStatistics.containsUpdates&& result.hasNext) {
+            if (result.getQueryStatistics.containsUpdates && result.hasNext) {
                 val row = result.next().toMap
                 val fromAuthorId = "x" >>: Prop.UserId from row
                 val toAuthorId = "y" >>: Prop.UserId from row
@@ -194,15 +194,22 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                           WHERE NOT (a)-[:${Arrow.Author}]->(b)
                           MERGE (a)-[view:${Arrow.View}]->(b)
                           ON CREATE SET ${"view" >>: Prop.UserId =:= userId},
-                                        ${"view" >>: Prop.Timestamp =:= timestamp}"""
+                                        ${"view" >>: Prop.Timestamp =:= timestamp}
+                          RETURN ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
-            result.getQueryStatistics.containsUpdates
+            if (result.getQueryStatistics.containsUpdates && result.hasNext) {
+                val row = result.next().toMap
+                val userName = "z" >>: Prop.UserName from row
+                userName.toOption
+            } else None
 
         val prg = for {
             result <- Query.result(query)(read).program
-	        _ <- if (result) Messages.send("viewed", model.paragraph.Viewed(userId, timestamp, target)).program
-                 else Messages.noop.program
+	        _ <- result match {
+                case Some(userName) => Messages.send("viewed", model.paragraph.Viewed(userId, userName, timestamp, target)).program
+                case _ => Messages.noop.program
+            }
         } yield ()
 
         Program.run(prg, global.env)

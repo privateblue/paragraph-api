@@ -141,21 +141,23 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             }
         } else ApiError(500, "Cannot convert node to User").failureNel[User]
 
-    private def viewsOf(node: Node): List[Connection] = for {
-        rel <- node.getRelationships(Direction.INCOMING, Arrow.View).toList
+    private def viewsOf(node: Node): List[UserConnection] = for {
+        rel <- node.getRelationships(Arrow.View, Direction.INCOMING).toList
+        user = rel.getStartNode
         connection <- relationshipToConnection(rel).toOption
-    } yield connection
+        userId <- Prop.UserId.from(user).toOption
+        userName <- Prop.UserName.from(user).toOption
+    } yield UserConnection(connection, userId, userName)
 
     private def parentBlocks(node: Node): List[BlockConnection] =
-        connectingBlocks(node, Direction.INCOMING)
+        linkedBlocks(node, Direction.INCOMING)
 
     private def childBlocks(node: Node): List[BlockConnection] =
-        connectingBlocks(node, Direction.OUTGOING)
+        linkedBlocks(node, Direction.OUTGOING)
 
-    private def connectingBlocks(node: Node, dir: Direction): List[BlockConnection] = for {
-        rel <- node.getRelationships(dir).toList
+    private def linkedBlocks(node: Node, dir: Direction): List[BlockConnection] = for {
+        rel <- node.getRelationships(Arrow.Link, dir).toList
         other = rel.getOtherNode(node)
-        if other.getLabels.toList.contains(Label.Block)
         connection <- relationshipToConnection(rel).toOption
         otherId <- Prop.BlockId.from(other).toOption
     } yield BlockConnection(connection, otherId)

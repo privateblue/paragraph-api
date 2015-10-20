@@ -6,6 +6,7 @@ import play.api.libs.json._
 
 case class Viewed(
     userId: UserId,
+    userName: String,
     timestamp: Long,
     target: BlockId
 )
