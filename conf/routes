@@ -216,9 +216,9 @@ GET     /block/:blockId/outgoing            @api.read.ReadController.outgoing(bl
 # Returns VIEW type arrows to a Block.
 #
 # The body of the returned HTTP response is an array of JSON objects, each with fields:
+# - "connection": JSON object (the arrow, see details at /block/:blockId/incoming route)
 # - "userId": string (the user id of the viewer)
-# - "timestamp": number (the creation time of the view arrow)
-# - "arrow": "VIEW"
+# - "userName": string (the user name of the viewer)
 
 GET     /block/:blockId/views               @api.read.ReadController.views(blockId: BlockId)
 
@@ -251,6 +251,18 @@ GET     /block/:blockId/viewed/subscribe    @api.read.ReadController.viewed(bloc
 # - "body": JSON object (see details at /start route)
 
 GET     /block/:blockId/appended/subscribe  @api.read.ReadController.appended(blockId: BlockId)
+
+# Opens a websocket connection to receive a Prepended JSON object on every prepended block to this block.
+#
+# The Prepended JSON object consists of fields:
+# - "blockId": string (the block id of the prepended block)
+# - "userId": string (the user id of the author of the prepended block)
+# - "timestamp": number (the creation time of the prepended block)
+# - "target": string (the block id of this block)
+# - "title": string (optional)
+# - "body": JSON object (see details at /start route)
+
+GET     /block/:blockId/prepended/subscribe  @api.read.ReadController.prepended(blockId: BlockId)
 
 # Opens a websocket connection to receive a Linked JSON object on every linked block to and from this block.
 #

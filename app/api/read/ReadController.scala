@@ -88,6 +88,9 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     def appended(blockId: BlockId) =
         eventsOf[model.paragraph.Appended]("appended", _.target == blockId)
 
+    def prepended(blockId: BlockId) =
+        eventsOf[model.paragraph.Prepended]("prepended", _.target == blockId)
+
     def linked(blockId: BlockId) =
         eventsOf[model.paragraph.Linked]("linked", (lnk => lnk.from == blockId || lnk.to == blockId))
 
