@@ -41,14 +41,14 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     def incoming(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
         val query = for {
             node <- loadBlockNode(blockId)
-        } yield parentBlocks(node).sortBy(block => (block.connection.timestamp, block.blockId))
+        } yield parentBlocks(node).sortBy(link => (link.timestamp, link.blockId))
         Program.run(query.program, global.env)
     }
 
     def outgoing(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
         val query = for {
             node <- loadBlockNode(blockId)
-        } yield childBlocks(node).sortBy(block => (block.connection.timestamp, block.blockId))
+        } yield childBlocks(node).sortBy(link => (link.timestamp, link.blockId))
         Program.run(query.program, global.env)
     }
 
@@ -144,34 +144,26 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             }
         } else ApiError(500, "Cannot convert node to User").failureNel[User]
 
-    private def viewsOf(node: Node): List[UserConnection] = for {
+    private def viewsOf(node: Node): List[Author] = for {
         rel <- node.getRelationships(Arrow.View, Direction.INCOMING).toList
         user = rel.getStartNode
-        connection <- relationshipToConnection(rel).toOption
+        timestamp <- Prop.Timestamp.from(rel).toOption
         userId <- Prop.UserId.from(user).toOption
         userName <- Prop.UserName.from(user).toOption
-    } yield UserConnection(connection, userId, userName)
+    } yield Author(timestamp, userId, userName)
 
-    private def parentBlocks(node: Node): List[BlockConnection] =
+    private def parentBlocks(node: Node): List[Link] =
         linkedBlocks(node, Direction.INCOMING)
 
-    private def childBlocks(node: Node): List[BlockConnection] =
+    private def childBlocks(node: Node): List[Link] =
         linkedBlocks(node, Direction.OUTGOING)
 
-    private def linkedBlocks(node: Node, dir: Direction): List[BlockConnection] = for {
+    private def linkedBlocks(node: Node, dir: Direction): List[Link] = for {
         rel <- node.getRelationships(Arrow.Link, dir).toList
         other = rel.getOtherNode(node)
-        connection <- relationshipToConnection(rel).toOption
+        timestamp <- Prop.Timestamp.from(rel).toOption
+        userId = Prop.UserId.from(rel).toOption
         otherId <- Prop.BlockId.from(other).toOption
-    } yield BlockConnection(connection, otherId)
-
-    private def relationshipToConnection(rel: Relationship): ValidationNel[Throwable, Connection] = {
-        val arrow = neo.Arrow(rel.getType)
-        val readUserId = Prop.UserId from rel
-        val readTimestamp = Prop.Timestamp from rel
-        (readUserId |@| readTimestamp) {
-            case (userId, timestamp) =>  Connection(userId, timestamp, arrow)
-        }
-    }
+    } yield Link(timestamp, otherId, userId)
 
 }

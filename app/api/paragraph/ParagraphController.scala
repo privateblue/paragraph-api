@@ -58,8 +58,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val blockId = BlockId(IdGenerator.key)
 
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})
-                          MERGE (a)-[:${Arrow.Author} {${Prop.UserId =:= userId},
-                                                       ${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
+                          MERGE (a)-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                              ${Prop.Timestamp =:= timestamp},
                                                                                                              ${Prop.BlockTitle =:= title},
                                                                                                              ${Prop.BlockBodyLabel =:= blockBody.label},
@@ -90,8 +89,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                            ${Prop.Timestamp =:= timestamp},
                                                                                                            ${Prop.BlockTitle =:= title},
                                                                                                            ${Prop.BlockBodyLabel =:= blockBody.label},
-                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
-                                                                                                                                                                 ${Prop.Timestamp =:= timestamp}}]-(a)
+                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]-(a)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
@@ -127,8 +125,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                                                                                            ${Prop.Timestamp =:= timestamp},
                                                                                                            ${Prop.BlockTitle =:= title},
                                                                                                            ${Prop.BlockBodyLabel =:= blockBody.label},
-                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.UserId =:= userId},
-                                                                                                                                                                 ${Prop.Timestamp =:= timestamp}}]-(a)
+                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]-(a)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
@@ -221,8 +218,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (b:${Label.User} {${Prop.UserId =:= target}})
                           MERGE (a)-[follow:${Arrow.Follow}]->(b)
-                          ON CREATE SET ${"follow" >>: Prop.UserId =:= userId},
-                                        ${"follow" >>: Prop.Timestamp =:= timestamp}"""
+                          ON CREATE SET ${"follow" >>: Prop.Timestamp =:= timestamp}"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) ()
