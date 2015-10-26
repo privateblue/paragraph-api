@@ -140,30 +140,6 @@ POST    /follow     @api.paragraph.ParagraphController.follow
 
 POST    /unfollow   @api.paragraph.ParagraphController.unfollow
 
-# Ignores a user by the current user.
-#
-# The body of the HTTP request is a JSON object, with fields:
-# - "target": string, non unique, required (the user id of the user being ignored)
-#
-# Requires "token" url parameter, with a valid session token, identifying the current user.
-#
-# The body of the returned HTTP response is a JSON object, with fields:
-# - "data": "success"
-
-POST    /ignore     @api.paragraph.ParagraphController.ignore
-
-# Unignores a user by the current user.
-#
-# The body of the HTTP request is a JSON object, with fields:
-# - "target": string, non unique, required (the user id of the user being unignored)
-#
-# Requires "token" url parameter, with a valid session token, identifying the current user.
-#
-# The body of the returned HTTP response is a JSON object, with fields:
-# - "data": "success"
-
-POST    /unignore   @api.paragraph.ParagraphController.unignore
-
 
 
 

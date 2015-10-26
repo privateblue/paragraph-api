@@ -254,45 +254,6 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         Program.run(prg, global.env)
     }
 
-    def ignore = Actions.authenticated { (userId, timestamp, body) =>
-        val target = (body \ "target").as[UserId]
-
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (b:${Label.User} {${Prop.UserId =:= target}})
-                          MERGE (a)-[ignore:${Arrow.Ignore}]->(b)
-                          ON CREATE SET ${"ignore" >>: Prop.UserId =:= userId},
-                                        ${"ignore" >>: Prop.Timestamp =:= timestamp}"""
-
-        def read(result: Result) =
-        	if (result.getQueryStatistics.containsUpdates) ()
-        	else throw NeoException("Already ignored")
-
-        val prg = for {
-    	    result <- Query.result(query)(read).program
-    	    _ <- Messages.send("ignored", model.paragraph.Ignored(userId, timestamp, target)).program
-        } yield ()
-
-        Program.run(prg, global.env)
-    }
-
-    def unignore = Actions.authenticated { (userId, timestamp, body) =>
-        val target = (body \ "target").as[UserId]
-
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Ignore}]->(b:${Label.User} {${Prop.UserId =:= target}})
-                          DELETE r"""
-
-        def read(result: Result) =
-            if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException("Unignoring has not been successful")
-
-        val prg = for {
-    	    result <- Query.result(query)(read).program
-    	    _ <- Messages.send("unignored", model.paragraph.Unignored(userId, timestamp, target)).program
-        } yield ()
-
-        Program.run(prg, global.env)
-    }
-
     private def notify(userId: UserId, timestamp: Long, text: String, from: BlockId, to: BlockId) = for {
         notification <- Notifications.notifyAboutBlock(userId, timestamp, text, from, to).program
         _ <- Messages.send("notification", notification).program

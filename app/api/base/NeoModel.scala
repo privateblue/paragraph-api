@@ -27,6 +27,5 @@ object NeoModel {
         val Author = neo.Arrow("AUTHOR")
         val View = neo.Arrow("VIEW")
         val Follow = neo.Arrow("FOLLOW")
-        val Ignore = neo.Arrow("IGNORE")
     }
 }
