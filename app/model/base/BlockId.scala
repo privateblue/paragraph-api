@@ -12,27 +12,6 @@ case class BlockId(val key: String) extends Id[String] {
     override def toString = key
 }
 
-object BlockId {
-    implicit val blockIdWriter = implicitly[PropertyWriter[String]].contramap[BlockId](_.key)
-
-    implicit val blockIdReader = implicitly[PropertyReader[String]].map(BlockId.apply)
-
-    implicit val blockIdFormat = new Format[BlockId] {
-        def reads(json: JsValue) = JsSuccess(BlockId(json.as[String]))
-        def writes(id: BlockId) = JsString(id.key)
-    }
-
-    implicit val pathBinder = new PathBindable[BlockId] {
-        override def bind(key: String, value: String): Either[String, BlockId] = Right(BlockId(value))
-        override def unbind(key: String, blockId: BlockId): String = blockId.key
-    }
-
-    implicit val queryStringBinder = new QueryStringBindable[Seq[BlockId]] {
-        override def bind(key: String, params: Map[String, Seq[String]]): Option[Either[String, Seq[BlockId]]] =
-            params.get(key).map(ids => Right(ids.map(apply)))
-        override def unbind(key: String, blockIds: Seq[BlockId]): String =
-            blockIds.map(id => s"$key=$id").mkString("&")
-    }
-
-    implicit val blockIdOrdering = Ordering.by[BlockId, String](_.key)
+object BlockId extends IdInstances[String, BlockId] {
+    def fromString(value: String) = value
 }
