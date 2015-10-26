@@ -190,8 +190,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                                 (b:${Label.Block} {${Prop.BlockId =:= target}})
                           WHERE NOT (a)-[:${Arrow.Author}]->(b)
                           MERGE (a)-[view:${Arrow.View}]->(b)
-                          ON CREATE SET ${"view" >>: Prop.UserId =:= userId},
-                                        ${"view" >>: Prop.Timestamp =:= timestamp}
+                          ON CREATE SET ${"view" >>: Prop.Timestamp =:= timestamp}
                           RETURN ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
