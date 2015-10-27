@@ -40,4 +40,9 @@ package object base {
         def program: Program[T] =
             command.mapK[AsyncErr, T](v => EitherT(Future.successful(v))).local(_.kafka)
     }
+
+    implicit class FromHttpClient[T](command: http.Command.Exec[T]) {
+        def program(implicit ec: ExecutionContext): Program[T] =
+            command.mapK[AsyncErr, T](f => EitherT(f.map(\/.right))).local(_.http)
+    }
 }

@@ -6,8 +6,11 @@ import redis.RedisClient
 
 import com.softwaremill.react.kafka.ReactiveKafka
 
+import akka.http.scaladsl.HttpExt
+
 case class Env(
     db: GraphDatabaseService,
     redis: RedisClient,
-    kafka: ReactiveKafka
+    kafka: ReactiveKafka,
+    http: HttpExt
 )

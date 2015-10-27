@@ -19,6 +19,8 @@ import com.softwaremill.react.kafka.ReactiveKafka
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 
+import akka.http.scaladsl.Http
+
 import play.api.libs.concurrent.Execution
 import play.api.inject.ApplicationLifecycle
 
@@ -59,8 +61,9 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
         config.zkConnect
     )
 
+    private val http = Http()
 
-    val env = Env(db, redis, kafka)
+    val env = Env(db, redis, kafka, http)
 
     import api.base.NeoModel._
     val init = for {
