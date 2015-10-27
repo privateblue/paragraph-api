@@ -36,8 +36,8 @@ package object base {
             command.mapK[AsyncErr, T](f => EitherT(f.map(\/.right))).local(_.redis)
     }
 
-    implicit class FromKafka[T](out: kafka.Command.Exec[T]) {
+    implicit class FromKafka[T](command: kafka.Command.Exec[T]) {
         def program: Program[T] =
-            out.mapK[AsyncErr, T](v => EitherT(Future.successful(v))).local(_.kafka)
+            command.mapK[AsyncErr, T](v => EitherT(Future.successful(v))).local(_.kafka)
     }
 }
