@@ -19,7 +19,7 @@ import com.softwaremill.react.kafka.ReactiveKafka
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 
-import play.api.libs.concurrent.Execution.Implicits._
+import play.api.libs.concurrent.Execution
 import play.api.inject.ApplicationLifecycle
 
 import scalaz._
@@ -37,25 +37,28 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
 
     val logger = LoggerFactory.getLogger("Paragraph")
 
+    implicit val executionContext = Execution.defaultContext
+
+    implicit val system = ActorSystem()
+
+    implicit val materializer = ActorMaterializer()
+
     private val db =
         new GraphDatabaseFactory()
             .setUserLogProvider(new Slf4jLogProvider)
             .newEmbeddedDatabase(config.neoPath)
 
-    private val redisSystem = ActorSystem("redis")
     private val redis = RedisClient(
         config.redisHost,
         config.redisPort,
         config.redisPassword
-    )(redisSystem)
+    )
 
     private val kafka = new ReactiveKafka(
         config.kafkaBrokers,
         config.zkConnect
     )
 
-    implicit val kafkaSystem = ActorSystem("reactive-kafka")
-    val kafkaMaterializer = ActorMaterializer()
 
     val env = Env(db, redis, kafka)
 
@@ -77,8 +80,7 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
     lifecycle.addStopHook { () =>
         for {
             _ <- Future { db.shutdown() }
-            _ <- Future { redisSystem.shutdown() }
-            _ <- Future { kafkaSystem.shutdown() }
+            _ <- Future { system.shutdown() }
         } yield ()
     }
 }

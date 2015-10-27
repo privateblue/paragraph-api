@@ -10,13 +10,14 @@ import neo._
 import org.mindrot.jbcrypt.BCrypt
 
 import play.api.mvc._
-import play.api.libs.concurrent.Execution.Implicits._
 
 import scalaz._
 import Scalaz._
 
 class SessionController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
+
+    import global.executionContext
 
     def login = Actions.public { (timestamp, body) =>
         val name = (body \ "name").as[String]

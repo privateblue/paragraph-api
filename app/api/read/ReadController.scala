@@ -16,7 +16,6 @@ import akka.stream.scaladsl.Source
 
 import play.api.mvc._
 import play.api.libs.json._
-import play.api.libs.concurrent.Execution.Implicits._
 
 import scalaz._
 import Scalaz._
@@ -25,6 +24,10 @@ import scala.collection.JavaConversions._
 
 class ReadController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
+
+    import global.executionContext
+    import global.system
+    import global.materializer
 
     def block(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
         val query = loadBlock(blockId)
@@ -78,9 +81,6 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         }
         Program.run(query.program, global.env)
     }
-
-    implicit val kafkaSystem = global.kafkaSystem
-    implicit val kafkaMaterializer = global.kafkaMaterializer
 
     def viewed(blockId: BlockId) =
         eventsOf[model.paragraph.Viewed]("viewed", _.target == blockId)

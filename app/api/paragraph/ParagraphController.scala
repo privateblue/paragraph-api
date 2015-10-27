@@ -14,7 +14,6 @@ import org.neo4j.graphdb.Result
 import org.mindrot.jbcrypt.BCrypt
 
 import play.api.mvc._
-import play.api.libs.concurrent.Execution.Implicits._
 
 import scalaz._
 import Scalaz._
@@ -24,8 +23,9 @@ import scala.collection.JavaConversions._
 class ParagraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
 
-    implicit val kafkaSystem = global.kafkaSystem
-    implicit val kafkaMaterializer = global.kafkaMaterializer
+    import global.executionContext
+    import global.system
+    import global.materializer
 
     def register = Actions.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]

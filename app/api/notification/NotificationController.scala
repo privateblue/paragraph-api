@@ -9,9 +9,12 @@ import model.notification._
 import akka.stream.scaladsl.Source
 
 import play.api.mvc._
-import play.api.libs.concurrent.Execution.Implicits._
 
 class NotificationController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
+    import global.executionContext
+    import global.system
+    import global.materializer
+
     def get = Actions.authenticated(parse.empty) { (userId, timestamp, _) =>
         val prg = Notifications.get(userId).program
         Program.run(prg, global.env)
@@ -22,9 +25,6 @@ class NotificationController @javax.inject.Inject() (implicit global: api.Global
         val prg = Notifications.dismiss(notificationId, userId).program
         Program.run(prg, global.env)
     }
-
-    implicit val kafkaSystem = global.kafkaSystem
-    implicit val kafkaMaterializer = global.kafkaMaterializer
 
     def subscribe = Actions.authenticatedSocket[Notification] { userId =>
         val prg = Messages.listen[Notification, Source[Notification, _]]("notification") { source =>
