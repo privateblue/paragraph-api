@@ -63,8 +63,10 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
     	    result <- Graph.append(timestamp, userId, blockId, target, title, blockBody).program
             (authorId, userName) = result
     	    _ <- Messages.send("appended", model.paragraph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
-            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has replied to your block", target, blockId)
-                 else Program.noop
+            _ <- authorId match {
+                case Some(id) if userId != id => notify(id, timestamp, s"$userName has replied to your block", target, blockId)
+                case _ => Program.noop
+            }
         } yield blockId
 
         Program.run(prg, global.env)
@@ -80,8 +82,10 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
     	    result <- Graph.prepend(timestamp, userId, blockId, target, title, blockBody).program
             (authorId, userName) = result
     	    _ <- Messages.send("prepended", model.paragraph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
-            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has shared your block", blockId, target)
-                 else Program.noop
+            _ <- authorId match {
+                case Some(id) if userId != id => notify(id, timestamp, s"$userName has shared your block", blockId, target)
+                case _ => Program.noop
+            }
         } yield blockId
 
         Program.run(prg, global.env)
@@ -102,10 +106,14 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                 } else throw NeoException(s"User $userId not found")
             }.program
     	    _ <- Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to)).program
-            _ <- if (userId != fromAuthorId) notify(fromAuthorId, timestamp, s"$userName has linked your block", from, to)
-                 else Program.noop
-            _ <- if (userId != toAuthorId) notify(toAuthorId, timestamp, s"$userName has linked your block", from, to)
-                 else Program.noop
+            _ <- fromAuthorId match {
+                case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
+                case _ => Program.noop
+            }
+            _ <- toAuthorId match {
+                case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
+                case _ => Program.noop
+            }
         } yield ()
 
         Program.run(prg, global.env)

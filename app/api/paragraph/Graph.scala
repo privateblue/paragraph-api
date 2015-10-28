@@ -47,7 +47,8 @@ object Graph {
 
     def append(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, title: Option[String], blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
+                                (b:${Label.Block} {${Prop.BlockId =:= target}})
+                          OPTIONAL MATCH (x:${Label.User})-[:${Arrow.Author}]->(b)
                           MERGE (b)-[:${Arrow.Link} {${Prop.UserId =:= userId},
                                                      ${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                            ${Prop.Timestamp =:= timestamp},
@@ -59,10 +60,9 @@ object Graph {
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
                 val row = result.next().toMap
-                val authorId = "x" >>: Prop.UserId from row
+                val authorId = "x" >>: Prop.UserId from row toOption
                 val userName = "a" >>: Prop.UserName from row
-                val getData = (authorId |@| userName) { case (a, u) => (a, u) }
-                validate(getData)
+                (authorId, validate(userName))
             } else throw NeoException("Append failed")
 
         Query.result(query)(read)
@@ -70,7 +70,8 @@ object Graph {
 
     def prepend(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, title: Option[String], blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
+                                (b:${Label.Block} {${Prop.BlockId =:= target}})
+                          OPTIONAL MATCH (x:${Label.User})-[:${Arrow.Author}]->(b)
                           MERGE (b)<-[:${Arrow.Link} {${Prop.UserId =:= userId},
                                                       ${Prop.Timestamp =:= timestamp}}]-(c:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                            ${Prop.Timestamp =:= timestamp},
@@ -82,18 +83,19 @@ object Graph {
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
                 val row = result.next().toMap
-                val authorId = "x" >>: Prop.UserId from row
+                val authorId = "x" >>: Prop.UserId from row toOption
                 val userName = "a" >>: Prop.UserName from row
-                val getData = (authorId |@| userName) { case (a, u) => (a, u) }
-                validate(getData)
+                (authorId, validate(userName))
             } else throw NeoException("Prepend failed")
 
         Query.result(query)(read)
     }
 
     def link(timestamp: Long, userId: Option[UserId], from: BlockId, to: BlockId) = {
-        val query = neo"""MATCH (x:${Label.User})-[:${Arrow.Author}]->(a:${Label.Block} {${Prop.BlockId =:= from}}),
-                                (y:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= to}})
+        val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId =:= from}}),
+                                (b:${Label.Block} {${Prop.BlockId =:= to}})
+                          OPTIONAL MATCH (x:${Label.User})-[:${Arrow.Author}]->(a)
+                          OPTIONAL MATCH (y:${Label.User})-[:${Arrow.Author}]->(b)
                           MERGE (a)-[link:${Arrow.Link}]->(b)
                           ON CREATE SET ${"link" >>: Prop.UserId =:= userId},
                                         ${"link" >>: Prop.Timestamp =:= timestamp}
@@ -102,10 +104,10 @@ object Graph {
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
                 val row = result.next().toMap
-                val fromAuthorId = "x" >>: Prop.UserId from row
-                val toAuthorId = "y" >>: Prop.UserId from row
-                val getData = (fromAuthorId |@| toAuthorId) { case (fa, ta) => (fa, ta) }
-                validate(getData)
+                val fromAuthorId = "x" >>: Prop.UserId from row toOption
+                val toAuthorId = "y" >>: Prop.UserId from row toOption
+                
+                (fromAuthorId, toAuthorId)
             } else throw NeoException("Already linked")
 
         Query.result(query)(read)

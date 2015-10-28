@@ -41,6 +41,13 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         Program.run(query.program, global.env)
     }
 
+    def source(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadBlockNode(blockId)
+        } yield validate(sourceOf(node))
+        Program.run(query.program, global.env)
+    }
+
     def incoming(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
         val query = for {
             node <- loadBlockNode(blockId)
@@ -119,18 +126,19 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
                 case Success(BlockBody.Label.image) => Prop.ImageBody from node
                 case _ => ApiError(500, "Invalid body type").failureNel[BlockBody]
             }
-            val readAuthor = authorOf(node)
+            val author = authorOf(node).toOption
+            val source = sourceOf(node).toOption
             val title = Prop.BlockTitle.from(node).toOption
-            (readBlockId |@| readTimestamp |@| readBody |@| readAuthor) {
-                case (blockId, timestamp, body, author) =>
-                    Block(blockId, title, timestamp, body, author)
+            (readBlockId |@| readTimestamp |@| readBody) {
+                case (blockId, timestamp, body) =>
+                    Block(blockId, title, timestamp, body, author, source)
             }
         } else ApiError(500, "Cannot convert node to Block").failureNel[Block]
 
     private def authorOf(node: Node): ValidationNel[Throwable, User] =
         Option(node.getSingleRelationship(Arrow.Author, Direction.INCOMING)) match {
             case Some(authorArrow) => nodeToUser(authorArrow.getStartNode)
-            case _ => ApiError(500, "Author not found").failureNel[User]
+            case _ => ApiError(404, "Author not found").failureNel[User]
         }
 
     private def nodeToUser(node: Node): ValidationNel[Throwable, User] =
@@ -143,6 +151,24 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
                 case (userId, timestamp, foreignId, name) => User(userId, timestamp, foreignId, name)
             }
         } else ApiError(500, "Cannot convert node to User").failureNel[User]
+
+    private def sourceOf(node: Node): ValidationNel[Throwable, Page] =
+        Option(node.getSingleRelationship(Arrow.Source, Direction.INCOMING)) match {
+            case Some(sourceArrow) => nodeToPage(sourceArrow.getStartNode)
+            case _ => ApiError(404, "Source not found").failureNel[Page]
+        }
+
+    private def nodeToPage(node: Node): ValidationNel[Throwable, Page] =
+        if (node.getLabels.toSeq.contains(Label.Page)) {
+            val readPageId = Prop.PageId from node
+            val readTimestamp = Prop.Timestamp from node
+            val readUrl = Prop.PageUrl from node
+            val readAuthor = Prop.PageAuthor from node
+            val readSite = Prop.PageSite from node
+            (readPageId |@| readTimestamp |@| readUrl |@| readAuthor |@| readSite) {
+                case (pageId, timestamp, url, author, site) => Page(pageId, timestamp, url, author, site)
+            }
+        } else ApiError(500, "Cannot convert node to Page").failureNel[Page]
 
     private def viewsOf(node: Node): List[Author] = for {
         rel <- node.getRelationships(Arrow.View, Direction.INCOMING).toList

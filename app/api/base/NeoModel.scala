@@ -6,6 +6,7 @@ object NeoModel {
     object Label {
         val Block = neo.Label("Block")
         val User = neo.Label("User")
+        val Page = neo.Label("Page")
     }
 
     object Prop {
@@ -20,6 +21,11 @@ object NeoModel {
         val UserForeignId = neo.Property[String]("foreignId")
         val UserName = neo.Property[String]("name")
         val UserPassword = neo.Property[String]("password")
+        val PageId = neo.Property[PageId]("pageId")
+        val PageUrl = neo.Property[String]("url")
+        val PageAuthor = neo.Property[String]("author")
+        val PageTitle = neo.Property[String]("title")
+        val PageSite = neo.Property[String]("site")
     }
 
     object Arrow {
@@ -27,5 +33,6 @@ object NeoModel {
         val Author = neo.Arrow("AUTHOR")
         val View = neo.Arrow("VIEW")
         val Follow = neo.Arrow("FOLLOW")
+        val Source = neo.Arrow("SOURCE")
     }
 }

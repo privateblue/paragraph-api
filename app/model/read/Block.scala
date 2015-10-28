@@ -9,7 +9,8 @@ case class Block(
     title: Option[String],
     timestamp: Long,
     body: BlockBody,
-    author: User
+    author: Option[User],
+    source: Option[Page]
 )
 
 object Block {

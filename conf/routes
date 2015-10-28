@@ -168,6 +168,17 @@ GET     /block/:blockId                     @api.read.ReadController.block(block
 
 GET     /block/:blockId/author              @api.read.ReadController.author(blockId: BlockId)
 
+# Returns the source of a Block.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "pageId": string (the page id of the page)
+# - "timestamp": number (the creation time of the user)
+# - "url": String
+# - "author": String
+# - "site": String
+
+GET     /block/:blockId/source              @api.read.ReadController.source(blockId: BlockId)
+
 # Returns the incoming connections to a Block from other Blocks.
 #
 # The body of the returned HTTP response is an array of JSON objects, each with fields:
