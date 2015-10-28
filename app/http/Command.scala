@@ -1,10 +1,10 @@
 package http
 
-import akka.stream.Materializer
-
 import akka.http.scaladsl.HttpExt
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.HttpResponse
+
+import akka.stream.Materializer
 
 import scalaz._
 
