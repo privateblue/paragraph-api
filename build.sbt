@@ -14,7 +14,8 @@ libraryDependencies ++= Seq(
     "com.softwaremill.reactivekafka" %% "reactive-kafka-core" % "0.8.1",
     "com.typesafe.akka" % "akka-stream-experimental_2.11" % "1.0",
     "com.typesafe.akka" % "akka-http-core-experimental_2.11" % "1.0",
-    "com.typesafe.akka" % "akka-http-experimental_2.11" % "1.0"
+    "com.typesafe.akka" % "akka-http-experimental_2.11" % "1.0",
+    "org.jsoup" % "jsoup" % "1.8.3"
 )
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
