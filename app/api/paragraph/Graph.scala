@@ -16,6 +16,15 @@ import scala.collection.JavaConversions._
 object Graph {
     import api.base.NeoModel._
 
+    def init = for {
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserId} IS UNIQUE")
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserName} IS UNIQUE")
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserForeignId} IS UNIQUE")
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Block}) ASSERT n.${Prop.BlockId} IS UNIQUE")
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Page}) ASSERT n.${Prop.PageId} IS UNIQUE")
+        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Page}) ASSERT n.${Prop.PageUrl} IS UNIQUE")
+    } yield ()
+
     def register(timestamp: Long, userId: UserId, name: String, hash: String, foreignId: String) = {
         val query = neo"""CREATE (a:${Label.User} {${Prop.UserId =:= userId},
                                                    ${Prop.Timestamp =:= timestamp},
@@ -106,7 +115,7 @@ object Graph {
                 val row = result.next().toMap
                 val fromAuthorId = "x" >>: Prop.UserId from row toOption
                 val toAuthorId = "y" >>: Prop.UserId from row toOption
-                
+
                 (fromAuthorId, toAuthorId)
             } else throw NeoException("Already linked")
 

@@ -1,6 +1,7 @@
 package api
 
 import api.base._
+import api.paragraph.Graph
 import api.session.Sessions
 
 import neo._
@@ -65,20 +66,13 @@ class Global @javax.inject.Inject() (lifecycle: ApplicationLifecycle) {
 
     val env = Env(db, redis, kafka, http)
 
-    import api.base.NeoModel._
     val init = for {
-        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserForeignId} IS UNIQUE").program
-        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserName} IS UNIQUE").program
-        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Block}) ASSERT n.${Prop.BlockId} IS UNIQUE").program
-        _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.User}) ASSERT n.${Prop.UserId} IS UNIQUE").program
+        _ <- Program.run(Graph.init.program, env).recover {
+            case e: Throwable => logger.error(s"Database initialization failed: ${e.getMessage}")
+        }
+        _ = logger.info("Database initialized")
     } yield ()
-    val runInit =
-        Program.run(init, env)
-            .map(_ => logger.info("Database initialized"))
-            .recover {
-                case e: Throwable => logger.error(s"Database initialization failed: ${e.getMessage}")
-            }
-    Await.ready(runInit, Duration.Inf)
+    Await.ready(init, Duration.Inf)
 
     lifecycle.addStopHook { () =>
         for {
