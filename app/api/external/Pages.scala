@@ -30,10 +30,11 @@ object Pages {
             if (p.hasText) Text(title, p.text, links) :: list
             else p.select("img").map(img => Image(title, img.attr("src"), links)).toList ++ list
         }.reverse
+        val url = doc.select("meta[name=og:url]").first.attr("content")
         val author = doc.select("meta[name=author]").first.attr("content")
         val title = doc.select("meta[property=og:title]").first.attr("content")
         val site = doc.select("meta[property=og:site_name]").first.attr("content")
-        Page(author, title, site, paragraphs)
+        Page(url, author, title, site, paragraphs)
     }
 
     private def load(url: String)(implicit ec: ExecutionContext, mat: Materializer) = http.Command.get(url) {
