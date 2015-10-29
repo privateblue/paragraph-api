@@ -105,7 +105,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                     validate(userName)
                 } else throw NeoException(s"User $userId not found")
             }.program
-    	    _ <- Messages.send("linked", model.paragraph.Linked(userId, timestamp, from, to)).program
+    	    _ <- Messages.send("linked", model.paragraph.Linked(Some(userId), timestamp, from, to)).program
             _ <- fromAuthorId match {
                 case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
                 case _ => Program.noop
