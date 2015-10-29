@@ -164,9 +164,10 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             val readTimestamp = Prop.Timestamp from node
             val readUrl = Prop.PageUrl from node
             val readAuthor = Prop.PageAuthor from node
+            val readTitle = Prop.PageTitle from node
             val readSite = Prop.PageSite from node
-            (readPageId |@| readTimestamp |@| readUrl |@| readAuthor |@| readSite) {
-                case (pageId, timestamp, url, author, site) => Page(pageId, timestamp, url, author, site)
+            (readPageId |@| readTimestamp |@| readUrl |@| readAuthor |@| readTitle |@| readSite) {
+                case (pageId, timestamp, url, author, title, site) => Page(pageId, timestamp, url, author, title, site)
             }
         } else ApiError(500, "Cannot convert node to Page").failureNel[Page]
 

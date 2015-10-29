@@ -9,6 +9,7 @@ case class Page(
     timestamp: Long,
     url: String,
     author: String,
+    title: String,
     site: String
 )
 
