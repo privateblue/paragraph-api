@@ -21,14 +21,12 @@ case class Property[T](name: String, identifier: Option[String] = None) {
 
     def from(row: Map[String, AnyRef])(implicit reader: PropertyReader[T]): ValidationNel[Throwable, T] =
         Validation.fromTryCatchNonFatal[T] {
-            identifier match {
-                case Some(id) =>
-                    val key = s"$id.$name"
-                    val value = NeoValue.fromRow(key, row)
-                    value.getOrElse(throw NeoException(s"Property $key not found"))
-                case _ =>
-                    throw NeoException(s"No identifier set for property $name")
+            val key = identifier match {
+                case Some(id) => s"$id.$name"
+                case _ => name
             }
+            val value = NeoValue.fromRow(key, row)
+            value.getOrElse(throw NeoException(s"Property $key not found"))
         }.toValidationNel
 }
 
