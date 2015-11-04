@@ -4,8 +4,11 @@ import api._
 import api.base._
 import api.messaging.Messages
 import api.notification.Notifications
+import api.external.Pages
 
 import model.base._
+import model.external.Page
+import model.external.Paragraph
 
 import neo._
 
@@ -151,6 +154,34 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
     	    result <- Graph.unfollow(timestamp, userId, target).program
     	    _ <- Messages.send("unfollowed", model.paragraph.Unfollowed(userId, timestamp, target)).program
         } yield ()
+
+        Program.run(prg, global.env)
+    }
+
+    def download = Actions.authenticated { (_, timestamp, body) =>
+        val url = (body \ "url").as[String]
+        val pageId = PageId(IdGenerator.key)
+
+        def storyFrom(page: Page): (List[BlockId], Query.Exec[BlockId]) = page.paragraphs match {
+            case first::rest =>
+                val firstId = BlockId(IdGenerator.key)
+                rest.foldLeft((List(firstId), Graph.start(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first)))) {
+                    case ((blockIds, previous), paragraph) =>
+                        val nextId = BlockId(IdGenerator.key)
+                        val continued = previous.flatMap(prevId => Graph.continue(timestamp, nextId, prevId, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph)))
+                        (nextId::blockIds, continued)
+                }
+            case _ => (List(), Query.error(ApiError(500, "Failed to download anything")))
+        }
+
+        val prg = for {
+            page <- Pages.parse(url).program
+            _ <- Graph.register(timestamp, pageId, page.url, page.author, page.title, page.site).program
+            // TODO messaging if page newly added
+            (blockIds, story) = storyFrom(page) // TODO only if page newly added
+            _ <- story.program // TODO only if page newly added
+            // TODO messaging if page newly added
+        } yield blockIds.reverse
 
         Program.run(prg, global.env)
     }

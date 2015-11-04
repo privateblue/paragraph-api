@@ -3,6 +3,7 @@ package api.paragraph
 import api.base._
 
 import model.base._
+import model.external._
 
 import neo._
 
@@ -39,6 +40,20 @@ object Graph {
         Query.result(query)(read)
     }
 
+    def register(timestamp: Long, pageId: PageId, url: String, author: String, title: String, site: String) = {
+        val query = neo"""CREATE (a:${Label.Page} {${Prop.PageId =:= pageId},
+                                                   ${Prop.Timestamp =:= timestamp},
+                                                   ${Prop.PageUrl =:= url},
+                                                   ${Prop.PageAuthor =:= author},
+                                                   ${Prop.PageTitle =:= title},
+                                                   ${Prop.PageSite =:= site}})"""
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) pageId // TODO use merge and return if there was an update or not
+            else throw NeoException(s"Page $url has not been created")
+
+        Query.result(query)(read)
+    }
+
     def start(timestamp: Long, userId: UserId, blockId: BlockId, title: Option[String], blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})
                           MERGE (a)-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
@@ -50,6 +65,38 @@ object Graph {
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) blockId
             else throw NeoException("Block has not been created")
+
+        Query.result(query)(read)
+    }
+
+    def start(timestamp: Long, pageId: PageId, blockId: BlockId, title: Option[String], blockBody: BlockBody) = {
+        val query = neo"""MATCH (a:${Label.Page} {${Prop.PageId =:= pageId}})
+                          MERGE (a)-[:${Arrow.Source} {${Prop.Timestamp =:= timestamp},
+                                                       ${Prop.SourceIndex =:= 0}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
+                                                                                                       ${Prop.Timestamp =:= timestamp},
+                                                                                                       ${Prop.BlockTitle =:= title},
+                                                                                                       ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                       ${Prop.BlockBody =:= blockBody}})"""
+
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Block has not been created")
+
+        Query.result(query)(read)
+    }
+
+    def continue(timestamp: Long, blockId: BlockId, target: BlockId, title: Option[String], blockBody: BlockBody) = {
+        val query = neo"""MATCH (a:${Label.Page})-[s:${Arrow.Source}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
+                          MERGE (b)-[:${Arrow.Link} {${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
+                                                                                                           ${Prop.Timestamp =:= timestamp},
+                                                                                                           ${Prop.BlockTitle =:= title},
+                                                                                                           ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Source} {${Prop.Timestamp =:= timestamp},
+                                                                                                                                                                 ${Prop.SourceIndex}:${"s" >>: Prop.SourceIndex}+1}]-(a)""" // TODO find way to encode expressions with neo dsl
+
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Continue failed")
 
         Query.result(query)(read)
     }

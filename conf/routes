@@ -140,6 +140,8 @@ POST    /follow     @api.paragraph.ParagraphController.follow
 
 POST    /unfollow   @api.paragraph.ParagraphController.unfollow
 
+POST    /download   @api.paragraph.ParagraphController.download
+
 
 
 
