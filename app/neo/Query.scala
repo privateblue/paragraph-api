@@ -51,6 +51,6 @@ object Query {
             \/.fromTryCatchNonFatal(fn(db)).leftMap(e => NeoException(e.getMessage))
         }
 
-    def error(t: Throwable): Exec[Nothing] =
-        Kleisli[Err, GraphDatabaseService, Nothing](_ => t.left)
+    def error[T](t: Throwable): Exec[T] =
+        Kleisli[Err, GraphDatabaseService, T](_ => t.left)
 }
