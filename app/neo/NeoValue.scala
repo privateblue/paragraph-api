@@ -16,5 +16,5 @@ object NeoValue {
         }.toValidationNel
 
     def fromRow[T: PropertyReader](name: String, row: Map[String, AnyRef]) =
-        row.get(name).map(fromNeo(_))
+        row.get(name).flatMap(Option(_)).map(fromNeo(_))
 }
