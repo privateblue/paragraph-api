@@ -7,16 +7,15 @@ import play.api.libs.json._
 
 sealed trait BlockBody {
     val label: String = this match {
-        case Text(_) => BlockBody.Label.text
-        case Image(_) => BlockBody.Label.image
+        case BlockBody.Text(_) => BlockBody.Label.text
+        case BlockBody.Image(_) => BlockBody.Label.image
     }
 }
 
-case class Text(text: String) extends BlockBody
-
-case class Image(uri: String) extends BlockBody
-
 object BlockBody {
+    case class Text(text: String) extends BlockBody
+    case class Image(uri: String) extends BlockBody
+
     object Label {
         val text = "text"
         val image = "image"
