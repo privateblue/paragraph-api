@@ -162,26 +162,38 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val url = (body \ "url").as[String]
         val pageId = PageId(IdGenerator.key)
 
-        def storyFrom(page: Page): (List[BlockId], Query.Exec[BlockId]) = page.paragraphs match {
+        def storyFrom(page: Page): (List[BlockId], Program[BlockId]) = page.paragraphs match {
             case first::rest =>
                 val firstId = BlockId(IdGenerator.key)
-                rest.foldLeft((List(firstId), Graph.start(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first)))) {
+                val messageFirst = Messages.send("firstDownloaded", model.paragraph.FirstDownloaded(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first))).program
+                val downloadFirst = Graph.downloadFirst(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first)).program
+                val firstStep = messageFirst.flatMap(_ => downloadFirst)
+                val (blockIds, download) = rest.foldLeft((List(firstId), firstStep)) {
                     case ((blockIds, previous), paragraph) =>
                         val nextId = BlockId(IdGenerator.key)
-                        val continued = previous.flatMap(prevId => Graph.continue(timestamp, nextId, prevId, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph)))
+                        val continued = previous.flatMap {
+                            prevId =>
+                                Messages.send("restDownloaded", model.paragraph.RestDownloaded(timestamp, nextId, prevId, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph))).program
+                                Graph.downloadRest(timestamp, nextId, prevId, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph)).program
+                        }
                         (nextId::blockIds, continued)
                 }
-            case _ => (List(), Query.error(ApiError(500, "Failed to download anything")))
+                (blockIds.reverse, download)
+            case _ => (List(), Query.error(ApiError(500, "Failed to download anything")).program)
         }
 
         val prg = for {
             page <- Pages.parse(url).program
-            _ <- Graph.register(timestamp, pageId, page.url, page.author, page.title, page.site).program
-            // TODO messaging if page newly added
-            (blockIds, story) = storyFrom(page) // TODO only if page newly added
-            _ <- story.program // TODO only if page newly added
-            // TODO messaging if page newly added
-        } yield blockIds.reverse
+            result <- Graph.pin(timestamp, pageId, page.url, page.author, page.title, page.site).program
+            (blockIds, story) = result match {
+                case Some(pageId) =>
+                    Messages.send("pinned", model.paragraph.Pinned(timestamp, pageId, page.url, page.author, page.title, page.site))
+                    storyFrom(page)
+                case _ =>
+                    (List.empty, Query.error(ApiError(409, s"${page.url} has already been downloaded")).program)
+            }
+            _ <- story
+        } yield blockIds
 
         Program.run(prg, global.env)
     }
