@@ -89,6 +89,18 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         Program.run(query.program, global.env)
     }
 
+    def page(url: String) = Actions.public(parse.empty) { (_, _) =>
+        val query = loadPage(url)
+        Program.run(query.program, global.env)
+    }
+
+    def sources(url: String) = Actions.public(parse.empty) { (_, _) =>
+        val query = for {
+            node <- loadPageNode(url)
+        } yield sourcesOf(node)
+        Program.run(query.program, global.env)
+    }
+
     def viewed(blockId: BlockId) =
         eventsOf[model.paragraph.Viewed]("viewed", _.target == blockId)
 
@@ -115,6 +127,14 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     private def loadBlockNode(blockId: BlockId): Query.Exec[Node] = Query.lift { db =>
         val node = db.findNode(Label.Block, Prop.BlockId.name, NeoValue.toNeo(blockId))
         Option(node).getOrElse(throw ApiError(404, s"Block $blockId not found"))
+    }
+
+    private def loadPage(url: String): Query.Exec[Page] =
+        loadPageNode(url).map(nodeToPage _ andThen validate _)
+
+    private def loadPageNode(url: String): Query.Exec[Node] = Query.lift { db =>
+        val node = db.findNode(Label.Page, Prop.PageUrl.name, NeoValue.toNeo(url))
+        Option(node).getOrElse(throw ApiError(404, s"Page $url not found"))
     }
 
     private def nodeToBlock(node: Node): ValidationNel[Throwable, Block] =
@@ -151,6 +171,17 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
                 case (userId, timestamp, foreignId, name) => User(userId, timestamp, foreignId, name)
             }
         } else ApiError(500, "Cannot convert node to User").failureNel[User]
+
+    private def sourcesOf(node: Node): List[model.read.Source] = {
+        val sources = for {
+            rel <- node.getRelationships(Arrow.Source, Direction.OUTGOING).toList
+            block = rel.getEndNode
+            timestamp <- Prop.Timestamp.from(rel).toOption
+            blockId <- Prop.BlockId.from(block).toOption
+            index <- Prop.SourceIndex.from(rel).toOption
+        } yield model.read.Source(timestamp, blockId, index)
+        sources.sortBy(_.index)
+    }
 
     private def sourceOf(node: Node): ValidationNel[Throwable, Page] =
         Option(node.getSingleRelationship(Arrow.Source, Direction.INCOMING)) match {

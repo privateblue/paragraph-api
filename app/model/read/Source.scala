@@ -4,12 +4,12 @@ import model.base._
 
 import play.api.libs.json._
 
-case class Link(
+case class Source(
     timestamp: Long,
     blockId: BlockId,
-    userId: Option[UserId]
+    index: Long
 )
 
-object Link {
-    implicit val linkWrites = Json.writes[Link]
+object Source {
+    implicit val sourceWrites = Json.writes[Source]
 }

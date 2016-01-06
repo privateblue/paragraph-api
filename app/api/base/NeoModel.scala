@@ -26,7 +26,7 @@ object NeoModel {
         val PageAuthor = neo.Property[String]("author")
         val PageTitle = neo.Property[String]("title")
         val PageSite = neo.Property[String]("site")
-        val SourceIndex = neo.Property[Int]("index")
+        val SourceIndex = neo.Property[Long]("index")
     }
 
     object Arrow {
