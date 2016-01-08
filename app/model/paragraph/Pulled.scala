@@ -4,7 +4,7 @@ import model.base._
 
 import play.api.libs.json._
 
-case class Pinned(
+case class Pulled(
     timestamp: Long,
     pageId: PageId,
     url: String,
@@ -13,6 +13,6 @@ case class Pinned(
     site: String
 )
 
-object Pinned {
-    implicit val pinnedFormat = Json.format[Pinned]
+object Pulled {
+    implicit val pulledFormat = Json.format[Pulled]
 }

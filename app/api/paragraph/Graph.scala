@@ -40,6 +40,23 @@ object Graph {
         Query.result(query)(read)
     }
 
+    def pull(timestamp: Long, pageId: PageId, url: String, author: String, title: String, site: String) = {
+        val query = neo"""MERGE (a:${Label.Page} {${Prop.PageUrl =:= url}})
+                          ON CREATE SET ${"a" >>: Prop.PageId =:= pageId},
+                                        ${"a" >>: Prop.Timestamp =:= timestamp},
+                                        ${"a" >>: Prop.PageAuthor =:= author},
+                                        ${"a" >>: Prop.PageTitle =:= title},
+                                        ${"a" >>: Prop.PageSite =:= site}
+                          RETURN ${"a" >>: Prop.PageId}"""
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates && result.hasNext) {
+                val row = result.next().toMap
+                "a" >>: Prop.PageId from row toOption
+            } else None
+
+        Query.result(query)(read)
+    }
+
     def start(timestamp: Long, userId: UserId, blockId: BlockId, title: Option[String], blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})
                           MERGE (a)-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
@@ -47,6 +64,22 @@ object Graph {
                                                                                                              ${Prop.BlockTitle =:= title},
                                                                                                              ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                              ${Prop.BlockBody =:= blockBody}})"""
+
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Block has not been created")
+
+        Query.result(query)(read)
+    }
+
+    def add(timestamp: Long, pageId: PageId, blockId: BlockId, title: Option[String], blockBody: BlockBody) = {
+        val query = neo"""MATCH (a:${Label.Page} {${Prop.PageId =:= pageId}})
+                          MERGE (a)-[:${Arrow.Source} {${Prop.Timestamp =:= timestamp},
+                                                       ${Prop.SourceIndex =:= 0L}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
+                                                                                                        ${Prop.Timestamp =:= timestamp},
+                                                                                                        ${Prop.BlockTitle =:= title},
+                                                                                                        ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                        ${Prop.BlockBody =:= blockBody}})"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) blockId
@@ -74,6 +107,22 @@ object Graph {
                 val userName = "a" >>: Prop.UserName from row
                 (authorId, validate(userName))
             } else throw NeoException("Append failed")
+
+        Query.result(query)(read)
+    }
+
+    def continue(timestamp: Long, blockId: BlockId, target: BlockId, title: Option[String], blockBody: BlockBody) = {
+        val query = neo"""MATCH (a:${Label.Page})-[s:${Arrow.Source}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
+                          MERGE (b)-[:${Arrow.Link} {${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
+                                                                                                           ${Prop.Timestamp =:= timestamp},
+                                                                                                           ${Prop.BlockTitle =:= title},
+                                                                                                           ${Prop.BlockBodyLabel =:= blockBody.label},
+                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Source} {${Prop.Timestamp =:= timestamp},
+                                                                                                                                                                 ${Prop.SourceIndex}:${"s" >>: Prop.SourceIndex}+1}]-(a)""" // TODO find way to encode expressions with neo dsl
+
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Downloading rest has failed")
 
         Query.result(query)(read)
     }
@@ -116,7 +165,7 @@ object Graph {
                 val row = result.next().toMap
                 val fromAuthorId = "x" >>: Prop.UserId from row toOption
                 val toAuthorId = "y" >>: Prop.UserId from row toOption
-                
+
                 (fromAuthorId, toAuthorId)
             } else throw NeoException("Already linked")
 
@@ -161,55 +210,6 @@ object Graph {
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) ()
     	    else throw NeoException("Unfollow has not been successful")
-
-        Query.result(query)(read)
-    }
-
-    def pin(timestamp: Long, pageId: PageId, url: String, author: String, title: String, site: String) = {
-        val query = neo"""MERGE (a:${Label.Page} {${Prop.PageUrl =:= url}})
-                          ON CREATE SET ${"a" >>: Prop.PageId =:= pageId},
-                                        ${"a" >>: Prop.Timestamp =:= timestamp},
-                                        ${"a" >>: Prop.PageAuthor =:= author},
-                                        ${"a" >>: Prop.PageTitle =:= title},
-                                        ${"a" >>: Prop.PageSite =:= site}
-                          RETURN ${"a" >>: Prop.PageId}"""
-        def read(result: Result) =
-            if (result.getQueryStatistics.containsUpdates && result.hasNext) {
-                val row = result.next().toMap
-                "a" >>: Prop.PageId from row toOption
-            } else None
-
-        Query.result(query)(read)
-    }
-
-    def downloadFirst(timestamp: Long, pageId: PageId, blockId: BlockId, title: Option[String], blockBody: BlockBody) = {
-        val query = neo"""MATCH (a:${Label.Page} {${Prop.PageId =:= pageId}})
-                          MERGE (a)-[:${Arrow.Source} {${Prop.Timestamp =:= timestamp},
-                                                       ${Prop.SourceIndex =:= 0L}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
-                                                                                                       ${Prop.Timestamp =:= timestamp},
-                                                                                                       ${Prop.BlockTitle =:= title},
-                                                                                                       ${Prop.BlockBodyLabel =:= blockBody.label},
-                                                                                                       ${Prop.BlockBody =:= blockBody}})"""
-
-        def read(result: Result) =
-            if (result.getQueryStatistics.containsUpdates) blockId
-            else throw NeoException("Block has not been created")
-
-        Query.result(query)(read)
-    }
-
-    def downloadRest(timestamp: Long, blockId: BlockId, target: BlockId, title: Option[String], blockBody: BlockBody) = {
-        val query = neo"""MATCH (a:${Label.Page})-[s:${Arrow.Source}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
-                          MERGE (b)-[:${Arrow.Link} {${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
-                                                                                                           ${Prop.Timestamp =:= timestamp},
-                                                                                                           ${Prop.BlockTitle =:= title},
-                                                                                                           ${Prop.BlockBodyLabel =:= blockBody.label},
-                                                                                                           ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Source} {${Prop.Timestamp =:= timestamp},
-                                                                                                                                                                 ${Prop.SourceIndex}:${"s" >>: Prop.SourceIndex}+1}]-(a)""" // TODO find way to encode expressions with neo dsl
-
-        def read(result: Result) =
-            if (result.getQueryStatistics.containsUpdates) blockId
-            else throw NeoException("Downloading rest has failed")
 
         Query.result(query)(read)
     }

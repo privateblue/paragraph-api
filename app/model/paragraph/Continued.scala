@@ -4,14 +4,14 @@ import model.base._
 
 import play.api.libs.json._
 
-case class FirstDownloaded(
+case class Continued(
     timestamp: Long,
-    pageId: PageId,
     blockId: BlockId,
+    target: BlockId,
     title: Option[String],
     blockBody: BlockBody
 )
 
-object FirstDownloaded {
-    implicit val firstDownloadedFormat = Json.format[FirstDownloaded]
+object Continued {
+    implicit val continuedFormat = Json.format[Continued]
 }

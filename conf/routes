@@ -140,18 +140,6 @@ POST    /follow     @api.paragraph.ParagraphController.follow
 
 POST    /unfollow   @api.paragraph.ParagraphController.unfollow
 
-# Downloads external content as a list of blocks.
-#
-# The body of the HTTP request is a JSON object, with fields:
-# - "url": string, non unique, required (url of the external content)
-#
-# Requires "token" url parameter, with a valid session token, identifying the current user.
-#
-# The body of the returned HTTP response is a JSON object, with fields:
-# - "data": array of strings (the list of block ids created)
-
-POST    /download   @api.paragraph.ParagraphController.download
-
 
 
 
@@ -289,6 +277,26 @@ GET     /block/:blockId/prepended/subscribe  @api.read.ReadController.prepended(
 # - "to": string (the block id of the end block)
 
 GET     /block/:blockId/linked/subscribe    @api.read.ReadController.linked(blockId: BlockId)
+
+
+
+
+#########################
+# EXTERNAL CONTENT ROUTES
+#########################
+
+
+# Downloads external content as a list of blocks.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "url": string, non unique, required (url of the external content)
+#
+# Requires "token" url parameter, with a valid session token, identifying the current user.
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": array of strings (the list of block ids created)
+
+POST    /pull   @api.external.ExternalContentController.pull
 
 
 
