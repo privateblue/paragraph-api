@@ -11,12 +11,18 @@ import model.external.Paragraph
 
 import neo._
 
+import org.neo4j.graphdb.Result
+
 import play.api.mvc._
 
 import scalaz._
 import Scalaz._
 
+import scala.collection.JavaConversions._
+
 class ExternalContentController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
+    import api.base.NeoModel._
+
     import global.executionContext
     import global.system
     import global.materializer
@@ -33,7 +39,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
                     Messages.send("pulled", model.graph.Pulled(timestamp, pageId, page.url, page.author, page.title, page.site))
                     addBlocks(timestamp, pageId, page)
                 case _ =>
-                    Query.error[List[BlockId]](ApiError(409, s"${page.url} has already been downloaded")).program
+                    getBlocks(page.url)
             }
         } yield blockIds
 
@@ -60,5 +66,20 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
                 }
                 .map(_.reverse)
         case _ => Query.error(ApiError(500, "Failed to download anything")).program
+    }
+
+    private def getBlocks(url: String): Program[List[BlockId]] = {
+        val query = neo"""MATCH (page:${Label.Page} {${Prop.PageUrl =:= url}})-[source:${Arrow.Source}]->(block:${Label.Block})
+                          RETURN ${"block" >>: Prop.BlockId}
+                          ORDER BY ${"source" >>: Prop.SourceIndex}"""
+
+        def read(result: Result): List[BlockId] =
+            if (result.hasNext) {
+                val row = result.next().toMap
+                val id = "block" >>: Prop.BlockId from row
+                validate(id) :: read(result)
+            } else Nil
+
+        Query.result(query)(read).program
     }
 }
