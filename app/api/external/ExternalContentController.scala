@@ -2,7 +2,7 @@ package api.external
 
 import api._
 import api.base._
-import api.paragraph.Graph
+import api.graph.Graph
 import api.messaging.Messages
 
 import model.base._
@@ -30,7 +30,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
             result <- Graph.pull(timestamp, pageId, page.url, page.author, page.title, page.site).program
             blockIds <- result match {
                 case Some(pageId) =>
-                    Messages.send("pulled", model.paragraph.Pulled(timestamp, pageId, page.url, page.author, page.title, page.site))
+                    Messages.send("pulled", model.graph.Pulled(timestamp, pageId, page.url, page.author, page.title, page.site))
                     addBlocks(timestamp, pageId, page)
                 case _ =>
                     Query.error[List[BlockId]](ApiError(409, s"${page.url} has already been downloaded")).program
@@ -45,7 +45,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
             val firstId = BlockId(IdGenerator.key)
             val added = Program.noop flatMap {
                 _ =>
-                    Messages.send("added", model.paragraph.Added(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first))).program
+                    Messages.send("added", model.graph.Added(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first))).program
                     Graph.add(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first)).map(List(_)).program
             }
             rest
@@ -54,7 +54,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
                         val nextId = BlockId(IdGenerator.key)
                         previous.flatMap {
                             case blockIds =>
-                                Messages.send("continued", model.paragraph.Continued(timestamp, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph))).program
+                                Messages.send("continued", model.graph.Continued(timestamp, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph))).program
                                 Graph.continue(timestamp, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph)).map(_::blockIds).program
                         }
                 }

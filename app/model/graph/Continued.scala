@@ -1,10 +1,10 @@
-package model.paragraph
+package model.graph
 
 import model.base._
 
 import play.api.libs.json._
 
-case class PageContinued(
+case class Continued(
     timestamp: Long,
     blockId: BlockId,
     target: BlockId,
@@ -12,6 +12,6 @@ case class PageContinued(
     blockBody: BlockBody
 )
 
-object PageContinued {
-    implicit val pageContinuedFormat = Json.format[PageContinued]
+object Continued {
+    implicit val continuedFormat = Json.format[Continued]
 }

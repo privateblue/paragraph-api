@@ -1,4 +1,4 @@
-package api.paragraph
+package api.graph
 
 import api.base._
 

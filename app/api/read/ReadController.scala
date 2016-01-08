@@ -102,16 +102,16 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     }
 
     def viewed(blockId: BlockId) =
-        eventsOf[model.paragraph.Viewed]("viewed", _.target == blockId)
+        eventsOf[model.graph.Viewed]("viewed", _.target == blockId)
 
     def appended(blockId: BlockId) =
-        eventsOf[model.paragraph.Appended]("appended", _.target == blockId)
+        eventsOf[model.graph.Appended]("appended", _.target == blockId)
 
     def prepended(blockId: BlockId) =
-        eventsOf[model.paragraph.Prepended]("prepended", _.target == blockId)
+        eventsOf[model.graph.Prepended]("prepended", _.target == blockId)
 
     def linked(blockId: BlockId) =
-        eventsOf[model.paragraph.Linked]("linked", (lnk => lnk.from == blockId || lnk.to == blockId))
+        eventsOf[model.graph.Linked]("linked", (lnk => lnk.from == blockId || lnk.to == blockId))
 
     private def eventsOf[T: Format](topic: String, predicate: T => Boolean) =
         Actions.publicSocket[T] {

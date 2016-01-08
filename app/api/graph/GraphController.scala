@@ -1,4 +1,4 @@
-package api.paragraph
+package api.graph
 
 import api._
 import api.base._
@@ -18,7 +18,7 @@ import Scalaz._
 
 import scala.collection.JavaConversions._
 
-class ParagraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
+class GraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
 
     import global.executionContext
@@ -34,7 +34,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
 
         val prg = for {
     	    result <- Graph.register(timestamp, userId, name, hash, foreignId).program
-    	    _ <- Messages.send("registered", model.paragraph.Registered(userId, timestamp, foreignId, name, password)).program
+    	    _ <- Messages.send("registered", model.graph.Registered(userId, timestamp, foreignId, name, password)).program
     	} yield userId
 
         Program.run(prg, global.env)
@@ -47,7 +47,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
 
         val prg = for {
     	    result <- Graph.start(timestamp, userId, blockId, title, blockBody).program
-    	    _ <- Messages.send("started", model.paragraph.Started(blockId, userId, timestamp, title, blockBody)).program
+    	    _ <- Messages.send("started", model.graph.Started(blockId, userId, timestamp, title, blockBody)).program
         } yield blockId
 
         Program.run(prg, global.env)
@@ -62,7 +62,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val prg = for {
     	    result <- Graph.append(timestamp, userId, blockId, target, title, blockBody).program
             (authorId, userName) = result
-    	    _ <- Messages.send("appended", model.paragraph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
+    	    _ <- Messages.send("appended", model.graph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
             _ <- authorId match {
                 case Some(id) if userId != id => notify(id, timestamp, s"$userName has replied to your block", target, blockId)
                 case _ => Program.noop
@@ -81,7 +81,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val prg = for {
     	    result <- Graph.prepend(timestamp, userId, blockId, target, title, blockBody).program
             (authorId, userName) = result
-    	    _ <- Messages.send("prepended", model.paragraph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
+    	    _ <- Messages.send("prepended", model.graph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
             _ <- authorId match {
                 case Some(id) if userId != id => notify(id, timestamp, s"$userName has shared your block", blockId, target)
                 case _ => Program.noop
@@ -105,7 +105,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
                     validate(userName)
                 } else throw NeoException(s"User $userId not found")
             }.program
-    	    _ <- Messages.send("linked", model.paragraph.Linked(Some(userId), timestamp, from, to)).program
+    	    _ <- Messages.send("linked", model.graph.Linked(Some(userId), timestamp, from, to)).program
             _ <- fromAuthorId match {
                 case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
                 case _ => Program.noop
@@ -125,7 +125,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
         val prg = for {
             result <- Graph.view(timestamp, userId, target).program
 	        _ <- result match {
-                case Some(userName) => Messages.send("viewed", model.paragraph.Viewed(userId, userName, timestamp, target)).program
+                case Some(userName) => Messages.send("viewed", model.graph.Viewed(userId, userName, timestamp, target)).program
                 case _ => Messages.noop.program
             }
         } yield ()
@@ -138,7 +138,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
 
         val prg = for {
     	    result <- Graph.follow(timestamp, userId, target).program
-    	    _ <- Messages.send("followed", model.paragraph.Followed(userId, timestamp, target)).program
+    	    _ <- Messages.send("followed", model.graph.Followed(userId, timestamp, target)).program
         } yield result
 
         Program.run(prg, global.env)
@@ -149,7 +149,7 @@ class ParagraphController @javax.inject.Inject() (implicit global: api.Global) e
 
         val prg = for {
     	    result <- Graph.unfollow(timestamp, userId, target).program
-    	    _ <- Messages.send("unfollowed", model.paragraph.Unfollowed(userId, timestamp, target)).program
+    	    _ <- Messages.send("unfollowed", model.graph.Unfollowed(userId, timestamp, target)).program
         } yield ()
 
         Program.run(prg, global.env)

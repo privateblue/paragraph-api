@@ -43,7 +43,7 @@ POST    /logout     @api.session.SessionController.logout
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": string (the user id of the newly created user)
 
-POST    /register   @api.paragraph.ParagraphController.register
+POST    /register   @api.graph.GraphController.register
 
 # Creates a new block without connecting it to other blocks.
 #
@@ -61,7 +61,7 @@ POST    /register   @api.paragraph.ParagraphController.register
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": string (the block id of the newly created block)
 
-POST    /start      @api.paragraph.ParagraphController.start
+POST    /start      @api.graph.GraphController.start
 
 # Appends a new block to an existing block. (The "reply" action.)
 #
@@ -75,7 +75,7 @@ POST    /start      @api.paragraph.ParagraphController.start
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": string (the block id of the newly created block)
 
-POST    /append     @api.paragraph.ParagraphController.append
+POST    /append     @api.graph.GraphController.append
 
 # Prepends a new block to an existing block. (The "share" action.)
 #
@@ -89,7 +89,7 @@ POST    /append     @api.paragraph.ParagraphController.append
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": string (the block id of the newly created block)
 
-POST    /prepend    @api.paragraph.ParagraphController.prepend
+POST    /prepend    @api.graph.GraphController.prepend
 
 # Links two existing blocks.
 #
@@ -102,7 +102,7 @@ POST    /prepend    @api.paragraph.ParagraphController.prepend
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": "success" (if the link has been created successfuly)
 
-POST    /link       @api.paragraph.ParagraphController.link
+POST    /link       @api.graph.GraphController.link
 
 # Connects the current user to a block with a VIEW arrow (i.e. the user have seen the block).
 #
@@ -114,7 +114,7 @@ POST    /link       @api.paragraph.ParagraphController.link
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": "success"
 
-POST    /view       @api.paragraph.ParagraphController.view
+POST    /view       @api.graph.GraphController.view
 
 # Follows a user by the current user.
 #
@@ -126,7 +126,7 @@ POST    /view       @api.paragraph.ParagraphController.view
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": "success"
 
-POST    /follow     @api.paragraph.ParagraphController.follow
+POST    /follow     @api.graph.GraphController.follow
 
 # Unfollows a user by the current user.
 #
@@ -138,7 +138,7 @@ POST    /follow     @api.paragraph.ParagraphController.follow
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": "success"
 
-POST    /unfollow   @api.paragraph.ParagraphController.unfollow
+POST    /unfollow   @api.graph.GraphController.unfollow
 
 
 

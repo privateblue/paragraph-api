@@ -1,4 +1,4 @@
-package model.paragraph
+package model.graph
 
 import model.base._
 

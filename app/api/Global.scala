@@ -1,7 +1,7 @@
 package api
 
 import api.base._
-import api.paragraph.Graph
+import api.graph.Graph
 import api.session.Sessions
 
 import neo._
