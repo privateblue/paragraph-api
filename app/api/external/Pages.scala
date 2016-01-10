@@ -22,7 +22,8 @@ object Pages {
     def parse(url: String)(implicit ec: ExecutionContext, mat: Materializer) = for {
         html <- load(url)
         doc = Jsoup.parse(html)
-    } yield validate(page(doc))
+        parsed = page(doc)
+    } yield validate(parsed)
 
     private def load(url: String)(implicit ec: ExecutionContext, mat: Materializer) = http.Command.get(url) {
         case HttpResponse(_, _, entity, _) => Unmarshal(entity).to[String]
