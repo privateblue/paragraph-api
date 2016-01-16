@@ -41,10 +41,10 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         Program.run(query.program, global.env)
     }
 
-    def source(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
+    def sources(blockId: BlockId) = Actions.public(parse.empty) { (_, _) =>
         val query = for {
             node <- loadBlockNode(blockId)
-        } yield validate(sourceOf(node))
+        } yield sourcesOf(node)
         Program.run(query.program, global.env)
     }
 
@@ -89,18 +89,6 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         Program.run(query.program, global.env)
     }
 
-    def page(url: String) = Actions.public(parse.empty) { (_, _) =>
-        val query = loadPage(url)
-        Program.run(query.program, global.env)
-    }
-
-    def sources(url: String) = Actions.public(parse.empty) { (_, _) =>
-        val query = for {
-            node <- loadPageNode(url)
-        } yield sourcesOf(node)
-        Program.run(query.program, global.env)
-    }
-
     def viewed(blockId: BlockId) =
         eventsOf[model.graph.Viewed]("viewed", _.target == blockId)
 
@@ -129,14 +117,6 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         Option(node).getOrElse(throw ApiError(404, s"Block $blockId not found"))
     }
 
-    private def loadPage(url: String): Query.Exec[Page] =
-        loadPageNode(url).map(nodeToPage _ andThen validate _)
-
-    private def loadPageNode(url: String): Query.Exec[Node] = Query.lift { db =>
-        val node = db.findNode(Label.Page, Prop.PageUrl.name, NeoValue.toNeo(url))
-        Option(node).getOrElse(throw ApiError(404, s"Page $url not found"))
-    }
-
     private def nodeToBlock(node: Node): ValidationNel[Throwable, Block] =
         if (node.getLabels.toSeq.contains(Label.Block)) {
             val readBlockId = Prop.BlockId from node
@@ -147,11 +127,11 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
                 case _ => ApiError(500, "Invalid body type").failureNel[BlockBody]
             }
             val author = authorOf(node).toOption
-            val source = sourceOf(node).toOption
+            val sources = sourcesOf(node)
             val title = Prop.BlockTitle.from(node).toOption
             (readBlockId |@| readTimestamp |@| readBody) {
                 case (blockId, timestamp, body) =>
-                    Block(blockId, title, timestamp, body, author, source)
+                    Block(blockId, title, timestamp, body, author, sources)
             }
         } else ApiError(500, "Cannot convert node to Block").failureNel[Block]
 
@@ -172,35 +152,16 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             }
         } else ApiError(500, "Cannot convert node to User").failureNel[User]
 
-    private def sourcesOf(node: Node): List[model.read.Source] = {
-        val sources = for {
-            rel <- node.getRelationships(Arrow.Source, Direction.OUTGOING).toList
-            block = rel.getEndNode
-            timestamp <- Prop.Timestamp.from(rel).toOption
-            blockId <- Prop.BlockId.from(block).toOption
-            index <- Prop.SourceIndex.from(rel).toOption
-        } yield model.read.Source(timestamp, blockId, index)
-        sources.sortBy(_.index)
-    }
-
-    private def sourceOf(node: Node): ValidationNel[Throwable, Page] =
-        Option(node.getSingleRelationship(Arrow.Source, Direction.INCOMING)) match {
-            case Some(sourceArrow) => nodeToPage(sourceArrow.getStartNode)
-            case _ => ApiError(404, "Source not found").failureNel[Page]
-        }
-
-    private def nodeToPage(node: Node): ValidationNel[Throwable, Page] =
-        if (node.getLabels.toSeq.contains(Label.Page)) {
-            val readPageId = Prop.PageId from node
-            val readTimestamp = Prop.Timestamp from node
-            val readUrl = Prop.PageUrl from node
-            val readAuthor = Prop.PageAuthor from node
-            val readTitle = Prop.PageTitle from node
-            val readSite = Prop.PageSite from node
-            (readPageId |@| readTimestamp |@| readUrl |@| readAuthor |@| readTitle |@| readSite) {
-                case (pageId, timestamp, url, author, title, site) => Page(pageId, timestamp, url, author, title, site)
-            }
-        } else ApiError(500, "Cannot convert node to Page").failureNel[Page]
+    private def sourcesOf(node: Node): List[Page] = for {
+        rel <- node.getRelationships(Arrow.Source, Direction.INCOMING).toList
+        page = rel.getStartNode
+        pageId <- Prop.PageId.from(page).toOption
+        timestamp <- Prop.Timestamp.from(page).toOption
+        url <- Prop.PageUrl.from(page).toOption
+        author = Prop.PageAuthor.from(page).toOption
+        title = Prop.PageTitle.from(page).toOption
+        site = Prop.PageSite.from(page).toOption
+    } yield Page(pageId, timestamp, url, author, title, site)
 
     private def viewsOf(node: Node): List[Author] = for {
         rel <- node.getRelationships(Arrow.View, Direction.INCOMING).toList

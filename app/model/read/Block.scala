@@ -10,7 +10,7 @@ case class Block(
     timestamp: Long,
     body: BlockBody,
     author: Option[User],
-    source: Option[Page]
+    sources: List[Page]
 )
 
 object Block {

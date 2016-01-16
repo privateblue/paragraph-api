@@ -27,17 +27,17 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     import global.system
     import global.materializer
 
-    def pull = Actions.authenticated { (_, timestamp, body) =>
+    def find = Actions.authenticated { (userId, timestamp, body) =>
         val url = (body \ "url").as[String]
         val pageId = PageId(IdGenerator.key)
 
         val prg = for {
-            page <- Pages.parse(url).program
-            result <- Graph.pull(timestamp, pageId, page.url, page.author, page.title, page.site).program
+            page <- Pages.parse(url)
+            result <- Graph.download(timestamp, pageId, page.url, page.author, page.title, page.site).program
             blockIds <- result match {
                 case Some(pageId) =>
-                    Messages.send("pulled", model.graph.Pulled(timestamp, pageId, page.url, page.author, page.title, page.site))
-                    addBlocks(timestamp, pageId, page)
+                    Messages.send("downloaded", model.graph.Downloaded(timestamp, pageId, page.url, page.author, page.title, page.site))
+                    addBlocks(timestamp, userId, pageId, page)
                 case _ =>
                     getBlocks(page.url)
             }
@@ -46,22 +46,22 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
         Program.run(prg, global.env)
     }
 
-    private def addBlocks(timestamp: Long, pageId: PageId, page: Page): Program[List[BlockId]] = page.paragraphs match {
+    private def addBlocks(timestamp: Long, userId: UserId, pageId: PageId, page: Page): Program[List[BlockId]] = page.paragraphs match {
         case first::rest =>
             val firstId = BlockId(IdGenerator.key)
-            val added = Program.noop flatMap {
+            val attached = Program.noop flatMap {
                 _ =>
-                    Messages.send("added", model.graph.Added(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first))).program
-                    Graph.add(timestamp, pageId, firstId, Some(page.title), Paragraph.blockBody(first)).map(List(_)).program
+                    Messages.send("attached", model.graph.Attached(timestamp, userId, pageId, firstId, page.title, Paragraph.blockBody(first))).program
+                    Graph.attach(timestamp, userId, pageId, firstId, page.title, Paragraph.blockBody(first)).map(List(_)).program
             }
             rest
-                .foldLeft(added) {
+                .foldLeft(attached) {
                     case (previous, paragraph) =>
                         val nextId = BlockId(IdGenerator.key)
                         previous.flatMap {
                             case blockIds =>
-                                Messages.send("continued", model.graph.Continued(timestamp, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph))).program
-                                Graph.continue(timestamp, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph)).map(_::blockIds).program
+                                Messages.send("continued", model.graph.Continued(timestamp, userId, pageId, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph))).program
+                                Graph.continue(timestamp, userId, pageId, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph)).map(_ => nextId::blockIds).program
                         }
                 }
                 .map(_.reverse)

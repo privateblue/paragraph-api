@@ -155,6 +155,7 @@ POST    /unfollow   @api.graph.GraphController.unfollow
 # - "timestamp": number (the creation time of the Block)
 # - "body": JSON object (see details at /start route)
 # - "author": JSON object (see details at /block/:blockId/author route)
+# - "sources": array of JSON objects (see details at /block/:blockId/sources route)
 
 GET     /block/:blockId                     @api.read.ReadController.block(blockId: BlockId)
 
@@ -168,16 +169,16 @@ GET     /block/:blockId                     @api.read.ReadController.block(block
 
 GET     /block/:blockId/author              @api.read.ReadController.author(blockId: BlockId)
 
-# Returns the source of a Block.
+# Returns the sources of a Block.
 #
-# The body of the returned HTTP response is a JSON object, with fields:
+# The body of the returned HTTP response is an array of JSON objects, each with fields:
 # - "pageId": string (the page id of the page)
 # - "timestamp": number (the creation time of the user)
 # - "url": String
 # - "author": String
 # - "site": String
 
-GET     /block/:blockId/source              @api.read.ReadController.source(blockId: BlockId)
+GET     /block/:blockId/sources             @api.read.ReadController.sources(blockId: BlockId)
 
 # Returns the incoming connections to a Block from other Blocks.
 #
@@ -214,26 +215,6 @@ GET     /block/:blockId/views               @api.read.ReadController.views(block
 # at /block/:blockId route).
 
 GET     /path                               @api.read.ReadController.path(blockIds: Seq[BlockId])
-
-# Returns a Page.
-#
-# The body of the returned HTTP response is a JSON object, with fields:
-# - "pageId": string (the page id of the page)
-# - "timestamp": number (the creation time of the user)
-# - "url": String
-# - "author": String
-# - "site": String
-
-GET     /page                               @api.read.ReadController.page(url: String)
-
-# Returns the Blocks of a Page.
-#
-# The body of the returned HTTP response is an array of JSON objects, each with fields:
-# - "timestamp": number (the creation time of the arrow)
-# - "blockId": string (the block id of the connecting Block)
-# - "index": number (the index of the paragraph in the original story)
-
-GET     /page/sources                       @api.read.ReadController.sources(url: String)
 
 # Opens a websocket connection to receive a Viewed JSON object on every view of this block.
 #
@@ -296,7 +277,7 @@ GET     /block/:blockId/linked/subscribe    @api.read.ReadController.linked(bloc
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": array of strings (the list of block ids created)
 
-POST    /pull   @api.external.ExternalContentController.pull
+POST    /find   @api.external.ExternalContentController.find
 
 
 

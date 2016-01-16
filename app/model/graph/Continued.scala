@@ -6,6 +6,8 @@ import play.api.libs.json._
 
 case class Continued(
     timestamp: Long,
+    userId: UserId,
+    pageId: PageId,
     blockId: BlockId,
     target: BlockId,
     title: Option[String],

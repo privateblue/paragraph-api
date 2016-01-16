@@ -42,7 +42,7 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
 
     def start = Actions.authenticated { (userId, timestamp, body) =>
         val title = (body \ "title").asOpt[String]
-        val blockBody = (body \ "body").as[BlockBody]
+        val blockBody = (body \ "body").as[BlockBody.Text]
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
@@ -56,17 +56,15 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
     def append = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
-        val blockBody = (body \ "body").as[BlockBody]
+        val blockBody = (body \ "body").as[BlockBody.Text]
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
     	    result <- Graph.append(timestamp, userId, blockId, target, title, blockBody).program
             (authorId, userName) = result
     	    _ <- Messages.send("appended", model.graph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
-            _ <- authorId match {
-                case Some(id) if userId != id => notify(id, timestamp, s"$userName has replied to your block", target, blockId)
-                case _ => Program.noop
-            }
+            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has replied to your block", target, blockId)
+                 else Program.noop
         } yield blockId
 
         Program.run(prg, global.env)
@@ -75,17 +73,15 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
     def prepend = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
         val title = (body \ "title").asOpt[String]
-        val blockBody = (body \ "body").as[BlockBody]
+        val blockBody = (body \ "body").as[BlockBody.Text]
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
     	    result <- Graph.prepend(timestamp, userId, blockId, target, title, blockBody).program
             (authorId, userName) = result
     	    _ <- Messages.send("prepended", model.graph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
-            _ <- authorId match {
-                case Some(id) if userId != id => notify(id, timestamp, s"$userName has shared your block", blockId, target)
-                case _ => Program.noop
-            }
+            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has shared your block", blockId, target)
+                 else Program.noop
         } yield blockId
 
         Program.run(prg, global.env)
@@ -106,14 +102,10 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
                 } else throw NeoException(s"User $userId not found")
             }.program
     	    _ <- Messages.send("linked", model.graph.Linked(Some(userId), timestamp, from, to)).program
-            _ <- fromAuthorId match {
-                case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
-                case _ => Program.noop
-            }
-            _ <- toAuthorId match {
-                case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
-                case _ => Program.noop
-            }
+            _ <- if (userId != fromAuthorId) notify(fromAuthorId, timestamp, s"$userName has linked your block", from, to)
+                 else Program.noop
+            _ <- if (userId != toAuthorId) notify(toAuthorId, timestamp, s"$userName has linked your block", from, to)
+                 else Program.noop
         } yield ()
 
         Program.run(prg, global.env)
