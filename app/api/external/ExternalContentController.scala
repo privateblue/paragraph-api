@@ -51,8 +51,8 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
             val firstId = BlockId(IdGenerator.key)
             val attached = Program.noop flatMap {
                 _ =>
-                    Messages.send("attached", model.graph.Attached(timestamp, userId, pageId, firstId, page.title, Paragraph.blockBody(first))).program
-                    Graph.attach(timestamp, userId, pageId, firstId, page.title, Paragraph.blockBody(first)).map(List(_)).program
+                    Messages.send("attached", model.graph.Attached(timestamp, userId, pageId, firstId, Paragraph.blockBody(first))).program
+                    Graph.attach(timestamp, userId, pageId, firstId, Paragraph.blockBody(first)).map(List(_)).program
             }
             rest
                 .foldLeft(attached) {
@@ -60,8 +60,8 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
                         val nextId = BlockId(IdGenerator.key)
                         previous.flatMap {
                             case blockIds =>
-                                Messages.send("continued", model.graph.Continued(timestamp, userId, pageId, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph))).program
-                                Graph.continue(timestamp, userId, pageId, nextId, blockIds.head, Paragraph.heading(paragraph), Paragraph.blockBody(paragraph)).map(_ => nextId::blockIds).program
+                                Messages.send("continued", model.graph.Continued(timestamp, userId, pageId, nextId, blockIds.head, Paragraph.blockBody(paragraph))).program
+                                Graph.continue(timestamp, userId, pageId, nextId, blockIds.head, Paragraph.blockBody(paragraph)).map(_ => nextId::blockIds).program
                         }
                 }
                 .map(_.reverse)

@@ -51,12 +51,12 @@ object Articles {
         }.toValidationNel
 
     private def paragraphsOf(elem: Element): List[Paragraph] = {
-        val ps = elem.select("article p:not(aside p):not(:has(small))").toList
-        ps.foldLeft(List.empty[Paragraph]) { (list, p) =>
-            val links = linksOf(p)
-            val heading = headingOf(p)
-            if (p.hasText) Paragraph.Text(heading, p.text, links) :: list
-            else imagesOf(p).map(Paragraph.Image(heading, _, links)) ++ list
+        val ps = elem.select("article p:not(aside p):not(:has(small)), article h1, article h2, article h3, article h4, article h5, article h6").toList
+        ps.foldLeft(List.empty[Paragraph]) { (list, node) =>
+            val links = linksOf(node)
+            if (node.tag.getName.startsWith("h") && node.hasText) Paragraph.Title(node.text, links) :: list
+            else if (node.tag.getName == "p" && node.hasText) Paragraph.Text(node.text, links) :: list
+            else imagesOf(node).map(Paragraph.Image(_, links)) ++ list
         }.reverse
     }
 
@@ -67,12 +67,6 @@ object Articles {
             val href = n.attr("abs:href")
             if (href.matches(linkPattern)) Some(href) else None
         }.toList
-
-    private def headingOf(elem: Element): Option[String] =
-        Option(elem.previousElementSibling).flatMap { prev =>
-            if (Set("h1", "h2", "h3", "h4", "h5", "h6").contains(prev.tag.getName)) Some(prev.text)
-            else None
-        }
 
     private def imagesOf(elem: Element): List[String] =
         elem.select("img").flatMap { n =>

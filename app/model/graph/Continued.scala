@@ -10,7 +10,6 @@ case class Continued(
     pageId: PageId,
     blockId: BlockId,
     target: BlockId,
-    title: Option[String],
     blockBody: BlockBody
 )
 

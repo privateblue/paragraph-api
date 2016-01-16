@@ -9,7 +9,6 @@ case class Attached(
     userId: UserId,
     pageId: PageId,
     blockId: BlockId,
-    title: Option[String],
     blockBody: BlockBody
 )
 

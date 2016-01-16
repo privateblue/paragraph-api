@@ -57,11 +57,10 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def start(timestamp: Long, userId: UserId, blockId: BlockId, title: Option[String], blockBody: BlockBody) = {
+    def start(timestamp: Long, userId: UserId, blockId: BlockId, blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})
                           MERGE (a)-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                              ${Prop.Timestamp =:= timestamp},
-                                                                                                             ${Prop.BlockTitle =:= title},
                                                                                                              ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                              ${Prop.BlockBody =:= blockBody}})"""
 
@@ -72,13 +71,12 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def attach(timestamp: Long, userId: UserId, pageId: PageId, blockId: BlockId, title: Option[String], blockBody: BlockBody) = {
+    def attach(timestamp: Long, userId: UserId, pageId: PageId, blockId: BlockId, blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (p:${Label.Page} {${Prop.PageId =:= pageId}})
                           MERGE (p)-[:${Arrow.Source} {${Prop.Timestamp =:= timestamp},
                                                        ${Prop.SourceIndex =:= 0L}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                         ${Prop.Timestamp =:= timestamp},
-                                                                                                        ${Prop.BlockTitle =:= title},
                                                                                                         ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                         ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]-(a)"""
 
@@ -89,13 +87,12 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def append(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, title: Option[String], blockBody: BlockBody) = {
+    def append(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
                           MERGE (b)-[:${Arrow.Link} {${Prop.UserId =:= userId},
                                                      ${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                            ${Prop.Timestamp =:= timestamp},
-                                                                                                           ${Prop.BlockTitle =:= title},
                                                                                                            ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]-(a)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
@@ -111,12 +108,11 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def continue(timestamp: Long, userId: UserId, pageId: PageId, blockId: BlockId, target: BlockId, title: Option[String], blockBody: BlockBody) = {
+    def continue(timestamp: Long, userId: UserId, pageId: PageId, blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (p:${Label.Page} {${Prop.PageId =:= pageId}})-[s:${Arrow.Source}]->(b:${Label.Block} {${Prop.BlockId =:= target}})<-[:${Arrow.Author}]-(x:${Label.User})
                           MERGE (b)-[:${Arrow.Link} {${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                            ${Prop.Timestamp =:= timestamp},
-                                                                                                           ${Prop.BlockTitle =:= title},
                                                                                                            ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Source} {${Prop.Timestamp =:= timestamp},
                                                                                                                                                                  ${Prop.SourceIndex}:${"s" >>: Prop.SourceIndex}+1}]-(p)
@@ -134,13 +130,12 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def prepend(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, title: Option[String], blockBody: BlockBody) = {
+    def prepend(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
         val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
                                 (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
                           MERGE (b)<-[:${Arrow.Link} {${Prop.UserId =:= userId},
                                                       ${Prop.Timestamp =:= timestamp}}]-(c:${Label.Block} {${Prop.BlockId =:= blockId},
                                                                                                            ${Prop.Timestamp =:= timestamp},
-                                                                                                           ${Prop.BlockTitle =:= title},
                                                                                                            ${Prop.BlockBodyLabel =:= blockBody.label},
                                                                                                            ${Prop.BlockBody =:= blockBody}})<-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]-(a)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""

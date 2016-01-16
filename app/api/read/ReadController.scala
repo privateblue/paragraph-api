@@ -123,15 +123,15 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             val readTimestamp = Prop.Timestamp from node
             val readBody = Prop.BlockBodyLabel from node match {
                 case Success(BlockBody.Label.text) => Prop.TextBody from node
+                case Success(BlockBody.Label.title) => Prop.TitleBody from node
                 case Success(BlockBody.Label.image) => Prop.ImageBody from node
                 case _ => ApiError(500, "Invalid body type").failureNel[BlockBody]
             }
             val author = authorOf(node).toOption
             val sources = sourcesOf(node)
-            val title = Prop.BlockTitle.from(node).toOption
             (readBlockId |@| readTimestamp |@| readBody) {
                 case (blockId, timestamp, body) =>
-                    Block(blockId, title, timestamp, body, author, sources)
+                    Block(blockId, timestamp, body, author, sources)
             }
         } else ApiError(500, "Cannot convert node to Block").failureNel[Block]
 

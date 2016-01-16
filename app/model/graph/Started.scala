@@ -8,7 +8,6 @@ case class Started(
     blockId: BlockId,
     userId: UserId,
     timestamp: Long,
-    title: Option[String],
     body: BlockBody
 )
 

@@ -9,7 +9,6 @@ case class Appended(
     userId: UserId,
     timestamp: Long,
     target: BlockId,
-    title: Option[String],
     body: BlockBody
 )
 

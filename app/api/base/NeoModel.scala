@@ -12,10 +12,10 @@ object NeoModel {
     object Prop {
         val Timestamp = neo.Property[Long]("timestamp")
         val BlockId = neo.Property[BlockId]("blockId")
-        val BlockTitle = neo.Property[String]("title")
         val BlockBodyLabel = neo.Property[String]("bodyType")
         val BlockBody = neo.Property[model.base.BlockBody]("body")
         val TextBody = neo.Property[model.base.BlockBody.Text](BlockBody.name)
+        val TitleBody = neo.Property[model.base.BlockBody.Title](BlockBody.name)
         val ImageBody = neo.Property[model.base.BlockBody.Image](BlockBody.name)
         val UserId = neo.Property[UserId]("userId")
         val UserForeignId = neo.Property[String]("foreignId")
