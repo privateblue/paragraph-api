@@ -17,7 +17,10 @@ package object base {
     type Program[T] = Kleisli[AsyncErr, Env, T]
 
     object Program {
-        val noop: Program[Unit] = Kleisli[AsyncErr, Env, Unit](_ => EitherT(Future.successful(().right)))
+        def lift[T](value: => T): Program[T] =
+            Kleisli[AsyncErr, Env, T](_ => EitherT(Future.successful(value.right)))
+
+        val noop: Program[Unit] = lift(())
 
         def run[T](program: Program[T], env: Env)(implicit ec: ExecutionContext): Future[T] =
             program(env).run.flatMap {
