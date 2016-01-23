@@ -4,15 +4,14 @@ import model.base._
 
 import play.api.libs.json._
 
-case class Downloaded(
+case class Included(
     timestamp: Long,
-    pageId: PageId,
     url: String,
     author: Option[String],
     title: Option[String],
     site: Option[String]
 )
 
-object Downloaded {
-    implicit val downloadedFormat = Json.format[Downloaded]
+object Included {
+    implicit val includedFormat = Json.format[Included]
 }

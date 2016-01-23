@@ -90,7 +90,7 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
         val to = (body \ "to").as[BlockId]
 
         val prg = for {
-    	    result <- Graph.link(timestamp, Some(userId), from, to).program
+    	    result <- Graph.link(timestamp, userId, from, to).program
             (fromAuthorId, toAuthorId) = result
             userName <- Query.result(neo"""MATCH (u:${Label.User} {${Prop.UserId =:= userId}}) RETURN ${"u" >>: Prop.UserName}""") { result =>
                 if (result.hasNext) {

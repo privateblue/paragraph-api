@@ -21,7 +21,6 @@ object NeoModel {
         val UserForeignId = neo.Property[String]("foreignId")
         val UserName = neo.Property[String]("name")
         val UserPassword = neo.Property[String]("password")
-        val PageId = neo.Property[PageId]("pageId")
         val PageUrl = neo.Property[String]("url")
         val PageAuthor = neo.Property[String]("author")
         val PageTitle = neo.Property[String]("title")

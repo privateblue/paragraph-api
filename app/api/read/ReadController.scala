@@ -155,13 +155,12 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     private def sourcesOf(node: Node): List[Page] = for {
         rel <- node.getRelationships(Arrow.Source, Direction.INCOMING).toList
         page = rel.getStartNode
-        pageId <- Prop.PageId.from(page).toOption
         timestamp <- Prop.Timestamp.from(page).toOption
         url <- Prop.PageUrl.from(page).toOption
         author = Prop.PageAuthor.from(page).toOption
         title = Prop.PageTitle.from(page).toOption
         site = Prop.PageSite.from(page).toOption
-    } yield Page(pageId, timestamp, url, author, title, site)
+    } yield Page(timestamp, url, author, title, site)
 
     private def viewsOf(node: Node): List[Author] = for {
         rel <- node.getRelationships(Arrow.View, Direction.INCOMING).toList

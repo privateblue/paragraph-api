@@ -30,8 +30,8 @@ object Articles {
     }
 
     private def page(elem: Element): ValidationNel[Throwable, Page] = {
-        (canonicalUrlOf(elem) |@| authorOf(elem) |@| titleOf(elem) |@| siteOf(elem)) {
-            case (url, author, title, site) => Page(url, Some(author), Some(title), Some(site), paragraphsOf(elem))
+        (canonicalUrlOf(elem) |@| authorOf(elem) |@| titleOf(elem) |@| siteOf(elem) |@| paragraphsOf(elem)) {
+            case (url, author, title, site, paragraphs) => Page(url, Some(author), Some(title), Some(site), paragraphs)
         }
     }
 
@@ -50,15 +50,22 @@ object Articles {
             else throw ApiError(500, s"$selector not found")
         }.toValidationNel
 
-    private def paragraphsOf(elem: Element): List[Paragraph] = {
-        val ps = elem.select("article p:not(aside p):not(:has(small)), article h1, article h2, article h3, article h4, article h5, article h6").toList
-        ps.foldLeft(List.empty[Paragraph]) { (list, node) =>
-            val links = linksOf(node)
-            if (node.tag.getName.startsWith("h") && node.hasText) Paragraph.Title(node.text, links) :: list
-            else if (node.tag.getName == "p" && node.hasText) Paragraph.Text(node.text, links) :: list
-            else imagesOf(node).map(Paragraph.Image(_, links)) ++ list
-        }.reverse
-    }
+    private def paragraphsOf(elem: Element): ValidationNel[Throwable, NonEmptyList[Paragraph]] =
+        Validation.fromTryCatchNonFatal[NonEmptyList[Paragraph]] {
+            val ps = elem.select("article p:not(aside p):not(:has(small)), article h1, article h2, article h3, article h4, article h5, article h6").toList
+            ps match {
+                case Nil =>
+                    throw ApiError(500, "No blocks can be parsed")
+                case _ =>
+                    val paragraphs = ps.foldLeft(List.empty[Paragraph]) { (list, node) =>
+                        val links = linksOf(node)
+                        if (node.tag.getName.startsWith("h") && node.hasText) Paragraph.Title(node.text, links) :: list
+                        else if (node.tag.getName == "p" && node.hasText) Paragraph.Text(node.text, links) :: list
+                        else imagesOf(node).map(Paragraph.Image(_, links)) ++ list
+                    }.reverse
+                    NonEmptyList.nel(paragraphs.head, paragraphs.tail)
+            }
+        }.toValidationNel
 
     private val linkPattern = "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]"
 

@@ -27,48 +27,24 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     import global.system
     import global.materializer
 
-    def find = Actions.authenticated { (userId, timestamp, body) =>
+    def pull = Actions.authenticated { (userId, timestamp, body) =>
         val url = (body \ "url").as[String]
-        val pageId = PageId(IdGenerator.key)
 
-        val prg = for {
-            page <- Pages.parse(url)
-            result <- Graph.download(timestamp, pageId, page.url, page.author, page.title, page.site).program
-            blockIds <- result match {
-                case Some(pageId) =>
-                    Messages.send("downloaded", model.graph.Downloaded(timestamp, pageId, page.url, page.author, page.title, page.site))
-                    addBlocks(timestamp, userId, pageId, page)
-                case _ =>
-                    getBlocks(page.url)
-            }
-        } yield blockIds
+        val prg = find(timestamp, userId, url)
 
         Program.run(prg, global.env)
     }
 
-    private def addBlocks(timestamp: Long, userId: UserId, pageId: PageId, page: Page): Program[List[BlockId]] = page.paragraphs match {
-        case first::rest =>
-            val firstId = BlockId(IdGenerator.key)
-            val attached = Program.noop flatMap {
-                _ =>
-                    Messages.send("attached", model.graph.Attached(timestamp, userId, pageId, firstId, Paragraph.blockBody(first))).program
-                    Graph.attach(timestamp, userId, pageId, firstId, Paragraph.blockBody(first)).map(List(_)).program
-            }
-            rest
-                .foldLeft(attached) {
-                    case (previous, paragraph) =>
-                        val nextId = BlockId(IdGenerator.key)
-                        previous.flatMap {
-                            case blockIds =>
-                                Messages.send("continued", model.graph.Continued(timestamp, userId, pageId, nextId, blockIds.head, Paragraph.blockBody(paragraph))).program
-                                Graph.continue(timestamp, userId, pageId, nextId, blockIds.head, Paragraph.blockBody(paragraph)).map(_ => nextId::blockIds).program
-                        }
-                }
-                .map(_.reverse)
-        case _ => Query.error(ApiError(500, "Failed to download anything")).program
-    }
+    private def find(timestamp: Long, userId: UserId, url: String): Program[NonEmptyList[BlockId]] = for {
+        page <- Pages.parse(url)
+        got <- get(page.url).program
+        blockIds <- got match {
+            case Nil => create(timestamp, userId, page)
+            case first::rest => Program.lift(NonEmptyList.nel(first, rest))
+        }
+    } yield blockIds
 
-    private def getBlocks(url: String): Program[List[BlockId]] = {
+    private def get(url: String) = {
         val query = neo"""MATCH (page:${Label.Page} {${Prop.PageUrl =:= url}})-[source:${Arrow.Source}]->(block:${Label.Block})
                           RETURN ${"block" >>: Prop.BlockId}
                           ORDER BY ${"source" >>: Prop.SourceIndex}"""
@@ -80,6 +56,29 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
                 validate(id) :: read(result)
             } else Nil
 
-        Query.result(query)(read).program
+        Query.result(query)(read)
     }
+
+    private def create(timestamp: Long, userId: UserId, page: Page): Program[NonEmptyList[BlockId]] = for {
+        _ <- Graph.include(timestamp, page.url, page.author, page.title, page.site).program
+
+        blocks = page.paragraphs.map {
+            case Paragraph.Image(imageUrl, links) if page.url != imageUrl => find(timestamp, userId, imageUrl).map(_.head)
+            case paragraph => Graph.start(timestamp, userId, BlockId(IdGenerator.key), Paragraph.blockBody(paragraph)).program
+        }
+
+        zero = Program.lift(List.empty[BlockId])
+        linkedBlocks <- blocks.foldLeft(zero) {
+            (previous, block) =>
+                for {
+                    blockIds <- previous
+                    blockId <- block
+                    _ <- blockIds.headOption match {
+                        case Some(target) => Graph.link(timestamp, userId, target, blockId).program
+                        case _ => Program.noop
+                    }
+                    _ <- Graph.source(timestamp, page.url, blockId, blockIds.length).program
+                } yield blockId::blockIds
+        }
+    } yield NonEmptyList.nel(linkedBlocks.head, linkedBlocks.tail).reverse
 }

@@ -20,7 +20,7 @@ package object neo {
                         (rest, Query(s"$q$expr$cur", params + (pName -> value)), c + 1)
 
                     case ((PropertyValue.Empty::rest, Query(q, params), c), cur) =>
-                        (rest, Query(s"$q$cur", params), c)
+                        (rest, Query(s"$q[[[empty]]]$cur", params), c)
 
                     case ((other::rest, Query(q, params), c), cur) =>
                         (rest, Query(s"$q$other$cur", params), c)
@@ -28,12 +28,7 @@ package object neo {
             val sanitized = query
                 .replaceAll("\n", "")
                 .replaceAll(" +", " ")
-                .replaceAll("\\{,+", "{")
-                .replaceAll("\\{(, )+", "{")
-                .replaceAll(",+", ",")
-                .replaceAll("(, )+", ", ")
-                .replaceAll(",+}", "}")
-                .replaceAll("(, )+}", "}")
+                .replaceAll(",? *\\[\\[\\[empty\\]\\]\\] *,?", "")
             Query(sanitized, parameters)
         }
     }

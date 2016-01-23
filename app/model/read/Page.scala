@@ -5,7 +5,6 @@ import model.base._
 import play.api.libs.json._
 
 case class Page(
-    pageId: PageId,
     timestamp: Long,
     url: String,
     author: Option[String],
