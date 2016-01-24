@@ -12,7 +12,7 @@ import org.neo4j.graphdb.Result
 import scalaz._
 import Scalaz._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 object Graph {
     import api.base.NeoModel._
@@ -78,7 +78,7 @@ object Graph {
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
-                val row = result.next().toMap
+                val row = result.next().asScala.toMap
                 val authorId = "x" >>: Prop.UserId from row
                 val userName = "a" >>: Prop.UserName from row
                 (validate(authorId), validate(userName))
@@ -99,7 +99,7 @@ object Graph {
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
-                val row = result.next().toMap
+                val row = result.next().asScala.toMap
                 val authorId = "x" >>: Prop.UserId from row
                 val userName = "a" >>: Prop.UserName from row
                 (validate(authorId), validate(userName))
@@ -118,7 +118,7 @@ object Graph {
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
-                val row = result.next().toMap
+                val row = result.next().asScala.toMap
                 val fromAuthorId = "x" >>: Prop.UserId from row
                 val toAuthorId = "y" >>: Prop.UserId from row
 
@@ -138,7 +138,7 @@ object Graph {
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
-                val row = result.next().toMap
+                val row = result.next().asScala.toMap
                 val userName = "a" >>: Prop.UserName from row
                 userName.toOption
             } else None

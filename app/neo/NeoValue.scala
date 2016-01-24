@@ -5,9 +5,9 @@ import org.neo4j.graphdb.PropertyContainer
 import scalaz._
 
 object NeoValue {
-    def toNeo[T](value: T)(implicit writer: PropertyWriter[T]): AnyRef = writer.write(value)
+    def toNeo[T](value: T)(implicit writer: PropertyWriter[T]): java.lang.Object = writer.write(value)
 
-    def fromNeo[T](value: AnyRef)(implicit reader: PropertyReader[T]): T = reader.read(value)
+    def fromNeo[T](value: java.lang.Object)(implicit reader: PropertyReader[T]): T = reader.read(value)
 
     def fromPropertyContainer[T: PropertyReader](name: String, container: PropertyContainer): ValidationNel[Throwable, T] =
         Validation.fromTryCatchNonFatal[T] {

@@ -20,7 +20,7 @@ import play.api.libs.json._
 import scalaz._
 import Scalaz._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class ReadController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
@@ -75,7 +75,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             case firstId :: restIds => for {
                 first <- loadBlockNode(firstId)
                 nodes = restIds.foldLeft(List(first)) { (path, id) =>
-                    val outgoing = path.head.getRelationships(Arrow.Link, Direction.OUTGOING)
+                    val outgoing = path.head.getRelationships(Arrow.Link, Direction.OUTGOING).asScala
                     val node = outgoing.map(_.getEndNode).find(n => Prop.BlockId.from(n).toOption.contains(id))
                     val block = node.getOrElse(throw ApiError(404, s"Block $id not found"))
                     block :: path
@@ -118,7 +118,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     }
 
     private def nodeToBlock(node: Node): ValidationNel[Throwable, Block] =
-        if (node.getLabels.toSeq.contains(Label.Block)) {
+        if (node.getLabels.asScala.toSeq.contains(Label.Block)) {
             val readBlockId = Prop.BlockId from node
             val readTimestamp = Prop.Timestamp from node
             val readBody = Prop.BlockBodyLabel from node match {
@@ -142,7 +142,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         }
 
     private def nodeToUser(node: Node): ValidationNel[Throwable, User] =
-        if (node.getLabels.toSeq.contains(Label.User)) {
+        if (node.getLabels.asScala.toSeq.contains(Label.User)) {
             val readUserId = Prop.UserId from node
             val readTimestamp = Prop.Timestamp from node
             val readForeignId = Prop.UserForeignId from node
@@ -153,7 +153,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         } else ApiError(500, "Cannot convert node to User").failureNel[User]
 
     private def sourcesOf(node: Node): List[Page] = for {
-        rel <- node.getRelationships(Arrow.Source, Direction.INCOMING).toList
+        rel <- node.getRelationships(Arrow.Source, Direction.INCOMING).asScala.toList
         page = rel.getStartNode
         timestamp <- Prop.Timestamp.from(page).toOption
         url <- Prop.PageUrl.from(page).toOption
@@ -163,7 +163,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
     } yield Page(timestamp, url, author, title, site)
 
     private def viewsOf(node: Node): List[Author] = for {
-        rel <- node.getRelationships(Arrow.View, Direction.INCOMING).toList
+        rel <- node.getRelationships(Arrow.View, Direction.INCOMING).asScala.toList
         user = rel.getStartNode
         timestamp <- Prop.Timestamp.from(rel).toOption
         userId <- Prop.UserId.from(user).toOption
@@ -177,7 +177,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         linkedBlocks(node, Direction.OUTGOING)
 
     private def linkedBlocks(node: Node, dir: Direction): List[Link] = for {
-        rel <- node.getRelationships(Arrow.Link, dir).toList
+        rel <- node.getRelationships(Arrow.Link, dir).asScala.toList
         other = rel.getOtherNode(node)
         timestamp <- Prop.Timestamp.from(rel).toOption
         userId = Prop.UserId.from(rel).toOption

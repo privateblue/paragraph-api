@@ -15,7 +15,7 @@ import akka.stream.Materializer
 import scalaz._
 import Scalaz._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 
 object Articles {
@@ -52,7 +52,7 @@ object Articles {
 
     private def paragraphsOf(elem: Element): ValidationNel[Throwable, NonEmptyList[Paragraph]] =
         Validation.fromTryCatchNonFatal[NonEmptyList[Paragraph]] {
-            val ps = elem.select("article p:not(aside p):not(:has(small)), article h1, article h2, article h3, article h4, article h5, article h6").toList
+            val ps = elem.select("article p:not(aside p):not(:has(small)), article h1, article h2, article h3, article h4, article h5, article h6").asScala.toList
             ps match {
                 case Nil =>
                     throw ApiError(500, "No blocks can be parsed")
@@ -70,13 +70,13 @@ object Articles {
     private val linkPattern = "^(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]"
 
     private def linksOf(elem: Element): List[String] =
-        elem.select("a").flatMap { n =>
+        elem.select("a").asScala.flatMap { n =>
             val href = n.attr("abs:href")
             if (href.matches(linkPattern)) Some(href) else None
         }.toList
 
     private def imagesOf(elem: Element): List[String] =
-        elem.select("img").flatMap { n =>
+        elem.select("img").asScala.flatMap { n =>
             val src = n.attr("src")
             if (src.matches(Pages.imagePattern)) Some(src) else None
         }.toList

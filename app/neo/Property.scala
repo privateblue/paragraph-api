@@ -34,5 +34,5 @@ sealed trait PropertyValue
 
 object PropertyValue {
     case object Empty extends PropertyValue
-    case class NonEmpty(identifier: Option[String], name: String, value: AnyRef) extends PropertyValue
+    case class NonEmpty(identifier: Option[String], name: String, value: java.lang.Object) extends PropertyValue
 }

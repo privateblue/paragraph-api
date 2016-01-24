@@ -18,7 +18,7 @@ import play.api.mvc._
 import scalaz._
 import Scalaz._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class ExternalContentController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
@@ -51,7 +51,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
 
         def read(result: Result): List[BlockId] =
             if (result.hasNext) {
-                val row = result.next().toMap
+                val row = result.next().asScala.toMap
                 val id = "block" >>: Prop.BlockId from row
                 validate(id) :: read(result)
             } else Nil

@@ -16,7 +16,7 @@ import play.api.mvc._
 import scalaz._
 import Scalaz._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class GraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
@@ -94,7 +94,7 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
             (fromAuthorId, toAuthorId) = result
             userName <- Query.result(neo"""MATCH (u:${Label.User} {${Prop.UserId =:= userId}}) RETURN ${"u" >>: Prop.UserName}""") { result =>
                 if (result.hasNext) {
-                    val row = result.next().toMap
+                    val row = result.next().asScala.toMap
                     val userName = "u" >>: Prop.UserName from row
                     validate(userName)
                 } else throw NeoException(s"User $userId not found")
