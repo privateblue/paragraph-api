@@ -9,5 +9,5 @@ import Scalaz._
 
 object Images {
     def parse(url: String): Program[Page] =
-        Program.lift(Page(url, None, None, None, NonEmptyList(Paragraph.Image(url, List()))))
+        Program.lift(Page(url, None, None, None, NonEmptyList(Paragraph.Image(url))))
 }
