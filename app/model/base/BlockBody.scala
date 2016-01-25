@@ -1,7 +1,7 @@
 package model.base
 
-import neo.PropertyReader
-import neo.PropertyWriter
+import neo.NeoReader
+import neo.NeoWriter
 
 import play.api.libs.json._
 
@@ -24,19 +24,19 @@ object BlockBody {
         val image = "image"
     }
 
-    implicit object BlockBodyWriter extends PropertyWriter[BlockBody] {
+    implicit object BlockBodyWriter extends NeoWriter[BlockBody] {
         def write(body: BlockBody) = body match {
-            case Text(text) => implicitly[PropertyWriter[String]].write(text)
-            case Title(text) => implicitly[PropertyWriter[String]].write(text)
-            case Image(uri) => implicitly[PropertyWriter[String]].write(uri)
+            case Text(text) => implicitly[NeoWriter[String]].write(text)
+            case Title(text) => implicitly[NeoWriter[String]].write(text)
+            case Image(uri) => implicitly[NeoWriter[String]].write(uri)
         }
     }
 
-    implicit val textReader = implicitly[PropertyReader[String]].map(Text.apply)
+    implicit val textReader = implicitly[NeoReader[String]].map(Text.apply)
 
-    implicit val titleReader = implicitly[PropertyReader[String]].map(Title.apply)
+    implicit val titleReader = implicitly[NeoReader[String]].map(Title.apply)
 
-    implicit val imageReader = implicitly[PropertyReader[String]].map(Image.apply)
+    implicit val imageReader = implicitly[NeoReader[String]].map(Image.apply)
 
     implicit val textFormat = Json.format[Text]
 

@@ -8,18 +8,18 @@ import Scalaz._
 case class Property[T](name: String, identifier: Option[String] = None) {
     def >>:(identifier: String): Property[T] = Property(name, Some(identifier))
 
-    def =:=(value: Option[T])(implicit writer: PropertyWriter[T]): PropertyValue = value match {
+    def =:=(value: Option[T])(implicit writer: NeoWriter[T]): PropertyValue = value match {
         case Some(v) => PropertyValue.NonEmpty(identifier, name, NeoValue.toNeo(v))
         case _ => PropertyValue.Empty
     }
 
-    def =:=(value: T)(implicit writer: PropertyWriter[T]) =
+    def =:=(value: T)(implicit writer: NeoWriter[T]) =
         PropertyValue.NonEmpty(identifier, name, NeoValue.toNeo(value))
 
-    def from(container: PropertyContainer)(implicit reader: PropertyReader[T]): ValidationNel[Throwable, T] =
+    def from(container: PropertyContainer)(implicit reader: NeoReader[T]): ValidationNel[Throwable, T] =
         NeoValue.fromPropertyContainer(name, container)
 
-    def from(row: Map[String, java.lang.Object])(implicit reader: PropertyReader[T]): ValidationNel[Throwable, T] =
+    def from(row: Map[String, java.lang.Object])(implicit reader: NeoReader[T]): ValidationNel[Throwable, T] =
         Validation.fromTryCatchNonFatal[T] {
             val key = identifier match {
                 case Some(id) => s"$id.$name"
