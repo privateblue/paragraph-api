@@ -19,7 +19,7 @@ case class Property[T](name: String, identifier: Option[String] = None) {
     def from(container: PropertyContainer)(implicit reader: PropertyReader[T]): ValidationNel[Throwable, T] =
         NeoValue.fromPropertyContainer(name, container)
 
-    def from(row: Map[String, AnyRef])(implicit reader: PropertyReader[T]): ValidationNel[Throwable, T] =
+    def from(row: Map[String, java.lang.Object])(implicit reader: PropertyReader[T]): ValidationNel[Throwable, T] =
         Validation.fromTryCatchNonFatal[T] {
             val key = identifier match {
                 case Some(id) => s"$id.$name"
