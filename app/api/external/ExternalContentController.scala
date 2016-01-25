@@ -89,7 +89,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
             case (previous, Paragraph.Text(content, links)) => for {
                 blockIds <- previous
                 blockId = BlockId(IdGenerator.key)
-                body = BlockBody.Text(content)
+                body = BlockBody.Text(content, links)
                 _ <- blockIds.headOption match {
                     case Some(target) => Graph.append(timestamp, userId, blockId, target, body).program
                     case _ => Graph.start(timestamp, userId, blockId, body).program

@@ -5,7 +5,7 @@ import play.api.libs.json._
 sealed trait BlockBody
 
 object BlockBody {
-    case class Text(text: String) extends BlockBody
+    case class Text(text: String, externalLinks: List[String]) extends BlockBody
     case class Title(text: String) extends BlockBody
     case class Image(uri: String) extends BlockBody
 
@@ -30,7 +30,7 @@ object BlockBody {
             }
         )
         def writes(body: BlockBody) = body match {
-            case b @ Text(_) => Json.obj("label" -> Label.text, "content" -> b)
+            case b @ Text(_, _) => Json.obj("label" -> Label.text, "content" -> b)
             case b @ Title(_) => Json.obj("label" -> Label.title, "content" -> b)
             case b @ Image(_) => Json.obj("label" -> Label.image, "content" -> b)
         }

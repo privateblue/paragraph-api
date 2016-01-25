@@ -27,6 +27,7 @@ object NeoModel {
         val BlockId = neo.Property[BlockId]("blockId")
         val BlockLabel = neo.Property[String]("label")
         val BlockContent = neo.Property[String]("content")
+        val BlockExternalLinks = neo.Property[Traversable[String]]("externalLinks")
         val UserId = neo.Property[UserId]("userId")
         val UserForeignId = neo.Property[String]("foreignId")
         val UserName = neo.Property[String]("name")
@@ -40,8 +41,8 @@ object NeoModel {
 
     implicit object BlockBodyPropertyConverter extends neo.PropertyConverter[BlockBody] {
         def prop(body: BlockBody) = body match {
-            case BlockBody.Text(text) =>
-                neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.text, Prop.BlockContent =:= text))
+            case BlockBody.Text(text, links) =>
+                neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.text, Prop.BlockContent =:= text, Prop.BlockExternalLinks =:= links))
             case BlockBody.Title(text) =>
                 neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.title, Prop.BlockContent =:= text))
             case BlockBody.Image(uri) =>
@@ -49,14 +50,14 @@ object NeoModel {
         }
 
         def from(container: PropertyContainer): ValidationNel[Throwable, BlockBody] =
-            parse(Prop.BlockLabel from container, Prop.BlockContent from container)
+            parse(Prop.BlockLabel from container, Prop.BlockContent from container, Prop.BlockExternalLinks from container)
 
         def from(row: Map[String, java.lang.Object]): ValidationNel[Throwable, BlockBody] =
-            parse(Prop.BlockLabel from row, Prop.BlockContent from row)
+            parse(Prop.BlockLabel from row, Prop.BlockContent from row, Prop.BlockExternalLinks from row)
 
-        private def parse(labelRead: ValidationNel[Throwable, String], bodyRead: ValidationNel[Throwable, String]): ValidationNel[Throwable, BlockBody] =
+        private def parse(labelRead: ValidationNel[Throwable, String], bodyRead: ValidationNel[Throwable, String], externalLinksRead: ValidationNel[Throwable, Traversable[String]]): ValidationNel[Throwable, BlockBody] =
             (labelRead |@| bodyRead) {
-                case (BlockBody.Label.text, body) => BlockBody.Text(body)
+                case (BlockBody.Label.text, body) => BlockBody.Text(body, externalLinksRead.toList.flatten)
                 case (BlockBody.Label.title, body) => BlockBody.Title(body)
                 case (BlockBody.Label.image, body) => BlockBody.Image(body)
             }

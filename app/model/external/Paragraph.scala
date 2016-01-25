@@ -10,7 +10,7 @@ object Paragraph {
     case class Image(url: String) extends Paragraph
 
     def blockBody(paragraph: Paragraph) = paragraph match {
-        case Paragraph.Text(content, _) => BlockBody.Text(content)
+        case Paragraph.Text(content, links) => BlockBody.Text(content, links)
         case Paragraph.Title(text) => BlockBody.Title(text)
         case Paragraph.Image(url) => BlockBody.Image(url)
     }
