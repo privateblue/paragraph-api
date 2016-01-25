@@ -62,23 +62,51 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     private def create(timestamp: Long, userId: UserId, page: Page): Program[NonEmptyList[BlockId]] = for {
         _ <- Graph.include(timestamp, page.url, page.author, page.title, page.site).program
 
-        blocks = page.paragraphs.map {
-            case Paragraph.Image(imageUrl, links) if page.url != imageUrl => find(timestamp, userId, imageUrl).map(_.head)
-            case paragraph => Graph.start(timestamp, userId, BlockId(IdGenerator.key), Paragraph.blockBody(paragraph)).program
-        }
-
         zero = Program.lift(List.empty[BlockId])
-        linkedBlocks <- blocks.foldLeft(zero) {
-            (previous, block) =>
-                for {
-                    blockIds <- previous
-                    blockId <- block
-                    _ <- blockIds.headOption match {
-                        case Some(target) => Graph.link(timestamp, userId, target, blockId).program
-                        case _ => Program.noop
-                    }
-                    _ <- Graph.source(timestamp, page.url, blockId, blockIds.length).program
-                } yield blockId::blockIds
+
+        linkedBlocks <- page.paragraphs.foldLeft(zero) {
+            case (previous, Paragraph.Image(imageUrl)) if page.url != imageUrl => for {
+                blockIds <- previous
+                blockId <- find(timestamp, userId, imageUrl).map(_.head)
+                _ <- blockIds.headOption match {
+                    case Some(target) => Graph.link(timestamp, userId, target, blockId).program
+                    case _ => Program.noop
+                }
+                _ <- Graph.source(timestamp, page.url, blockId, blockIds.length).program
+            } yield blockId::blockIds
+
+            case (previous, Paragraph.Image(imageUrl)) => for {
+                blockIds <- previous
+                blockId = BlockId(IdGenerator.key)
+                body = BlockBody.Image(imageUrl)
+                _ <- blockIds.headOption match {
+                    case Some(target) => Graph.append(timestamp, userId, blockId, target, body).program
+                    case _ => Graph.start(timestamp, userId, blockId, body).program
+                }
+                _ <- Graph.source(timestamp, page.url, blockId, blockIds.length).program
+            } yield blockId::blockIds
+
+            case (previous, Paragraph.Text(content, links)) => for {
+                blockIds <- previous
+                blockId = BlockId(IdGenerator.key)
+                body = BlockBody.Text(content)
+                _ <- blockIds.headOption match {
+                    case Some(target) => Graph.append(timestamp, userId, blockId, target, body).program
+                    case _ => Graph.start(timestamp, userId, blockId, body).program
+                }
+                _ <- Graph.source(timestamp, page.url, blockId, blockIds.length).program
+            } yield blockId::blockIds
+
+            case (previous, Paragraph.Title(text)) => for {
+                blockIds <- previous
+                blockId = BlockId(IdGenerator.key)
+                body = BlockBody.Title(text)
+                _ <- blockIds.headOption match {
+                    case Some(target) => Graph.append(timestamp, userId, blockId, target, body).program
+                    case _ => Graph.start(timestamp, userId, blockId, body).program
+                }
+                _ <- Graph.source(timestamp, page.url, blockId, blockIds.length).program
+            } yield blockId::blockIds
         }
     } yield NonEmptyList.nel(linkedBlocks.head, linkedBlocks.tail).reverse
 }
