@@ -113,7 +113,8 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         loadBlockNode(blockId).map(nodeToBlock _ andThen validate _)
 
     private def loadBlockNode(blockId: BlockId): Query.Exec[Node] = Query.lift { db =>
-        val node = db.findNode(Label.Block, Prop.BlockId.name, NeoValue.toNeo(blockId))
+        val blockIdProp = Prop.BlockId =:= blockId
+        val node = db.findNode(Label.Block, blockIdProp.name, blockIdProp.value)
         Option(node).getOrElse(throw ApiError(404, s"Block $blockId not found"))
     }
 
@@ -121,12 +122,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         if (node.getLabels.asScala.toSeq.contains(Label.Block)) {
             val readBlockId = Prop.BlockId from node
             val readTimestamp = Prop.Timestamp from node
-            val readBody = Prop.BlockBodyLabel from node match {
-                case Success(BlockBody.Label.text) => Prop.TextBody from node
-                case Success(BlockBody.Label.title) => Prop.TitleBody from node
-                case Success(BlockBody.Label.image) => Prop.ImageBody from node
-                case _ => ApiError(500, "Invalid body type").failureNel[BlockBody]
-            }
+            val readBody = PropertyValue.as[BlockBody](node)
             val author = authorOf(node).toOption
             val sources = sourcesOf(node)
             (readBlockId |@| readTimestamp |@| readBody) {
