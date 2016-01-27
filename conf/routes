@@ -277,7 +277,9 @@ GET     /block/:blockId/linked/subscribe    @api.read.ReadController.linked(bloc
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": array of strings (the list of block ids created)
 
-POST    /pull   @api.external.ExternalContentController.pull
+POST    /pull       @api.external.ExternalContentController.pull
+
+POST    /resolve    @api.external.ExternalContentController.resolve
 
 
 

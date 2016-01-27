@@ -42,7 +42,7 @@ object NeoModel {
     implicit object BlockBodyPropertyConverter extends neo.PropertyConverter[BlockBody] {
         def prop(body: BlockBody) = body match {
             case BlockBody.Text(text, links) =>
-                neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.text, Prop.BlockContent =:= text, Prop.BlockExternalLinks =:= links))
+                neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.text, Prop.BlockContent =:= text, Prop.BlockExternalLinks =:= links.distinct))
             case BlockBody.Title(text) =>
                 neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.title, Prop.BlockContent =:= text))
             case BlockBody.Image(uri) =>

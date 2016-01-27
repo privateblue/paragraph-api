@@ -32,6 +32,12 @@ package object base {
                 r = (res) => Future.successful(res)
             )
         }
+
+        def recover[T](program: Program[T])(fn: PartialFunction[Throwable, T]): Program[T] =
+            program.mapK {
+                case -\/(e) if fn.isDefinedAt(e) => fn(e).right
+                case v => v
+            }
     }
 
     implicit class FromNeoQuery[T](query: neo.Query.Exec[T]) {

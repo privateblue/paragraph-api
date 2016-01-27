@@ -30,16 +30,24 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     def pull = Actions.authenticated { (userId, timestamp, body) =>
         val url = (body \ "url").as[String]
 
-        val prg = find(timestamp, userId, url)
+        val prg = find(timestamp, userId, url, true)
 
         Program.run(prg, global.env)
     }
 
-    private def find(timestamp: Long, userId: UserId, url: String): Program[NonEmptyList[BlockId]] = for {
+    def resolve = Actions.authenticated { (userId, timestamp, body) =>
+        val blockId = (body \ "blockId").as[BlockId]
+
+        val prg = appendExternalLinks(timestamp, userId, blockId)
+
+        Program.run(prg, global.env)
+    }
+
+    private def find(timestamp: Long, userId: UserId, url: String, findLinks: Boolean): Program[NonEmptyList[BlockId]] = for {
         page <- Pages.parse(url)
         got <- get(page.url).program
         blockIds <- got match {
-            case Nil => create(timestamp, userId, page)
+            case Nil => create(timestamp, userId, page, findLinks)
             case first::rest => Program.lift(NonEmptyList.nel(first, rest))
         }
     } yield blockIds
@@ -59,7 +67,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
         Query.result(query)(read)
     }
 
-    private def create(timestamp: Long, userId: UserId, page: Page): Program[NonEmptyList[BlockId]] = for {
+    private def create(timestamp: Long, userId: UserId, page: Page, findLinks: Boolean): Program[NonEmptyList[BlockId]] = for {
         _ <- Graph.include(timestamp, page.url, page.author, page.title, page.site).program
 
         zero = Program.lift(List.empty[BlockId])
@@ -67,7 +75,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
         linkedBlocks <- page.paragraphs.foldLeft(zero) {
             case (previous, Paragraph.Image(imageUrl)) if page.url != imageUrl => for {
                 blockIds <- previous
-                blockId <- find(timestamp, userId, imageUrl).map(_.head)
+                blockId <- find(timestamp, userId, imageUrl, false).map(_.head)
                 _ <- blockIds.headOption match {
                     case Some(target) => Graph.link(timestamp, userId, target, blockId).program
                     case _ => Program.noop
@@ -94,6 +102,8 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
                     case Some(target) => Graph.append(timestamp, userId, blockId, target, body).program
                     case _ => Graph.start(timestamp, userId, blockId, body).program
                 }
+                _ <- if (findLinks) appendExternalLinks(timestamp, userId, blockId)
+                     else Program.noop
                 _ <- Graph.source(timestamp, page.url, blockId, blockIds.length).program
             } yield blockId::blockIds
 
@@ -109,4 +119,46 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
             } yield blockId::blockIds
         }
     } yield NonEmptyList.nel(linkedBlocks.head, linkedBlocks.tail).reverse
+
+    private def appendExternalLinks(timestamp: Long, userId: UserId, blockId: BlockId) = for {
+        stories <- findExternalLinks(timestamp, userId, blockId)
+        _ <- stories.map(story => Graph.link(timestamp, userId, blockId, story.head)).sequenceU.program
+    } yield ()
+
+    private def findExternalLinks(timestamp: Long, userId: UserId, blockId: BlockId): Program[List[NonEmptyList[BlockId]]] = for {
+        links <- getExternalLinks(blockId).program
+        blocks <- links.map {
+            url =>
+                val found = find(timestamp, userId, url, false).map(url -> _.list)
+                Program.recover(found) {
+                    case ParseError(_) => url -> List.empty[BlockId]
+                }
+        }.sequenceU
+        linksToKeep = blocks.collect {
+            case (url, story) if story.isEmpty => url
+        }
+        _ <- updateExternalLinks(blockId, linksToKeep).program
+        stories = blocks.collect {
+            case (url, first::rest) => NonEmptyList.nel(first, rest)
+        }
+    } yield stories
+
+    private def getExternalLinks(blockId: BlockId) = Query.lift { db =>
+        val blockIdProp = Prop.BlockId =:= blockId
+        val node = db.findNode(Label.Block, blockIdProp.name, blockIdProp.value)
+        Option(node)
+            .map(Prop.BlockExternalLinks.from(_).toList.flatten)
+            .getOrElse(throw ApiError(404, s"Block $blockId not found"))
+    }
+
+    private def updateExternalLinks(blockId: BlockId, links: Traversable[String]) = {
+        val query = neo"""MATCH (block:${Label.Block} {${Prop.BlockId =:= blockId}})
+                          SET block += {${Prop.BlockExternalLinks =:= links}}"""
+
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) ()
+            else throw NeoException(s"Block $blockId not found")
+
+        Query.result(query)(read)
+    }
 }

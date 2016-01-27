@@ -22,8 +22,11 @@ object Articles {
     def parse(url: String)(implicit ec: ExecutionContext, mat: Materializer) = for {
         html <- load(url)
         doc = Jsoup.parse(html)
-        parsed = page(doc)
-    } yield validate(parsed)
+        parsed = page(doc).fold(
+            fail = es => throw ParseError(es.map(_.getMessage)),
+            succ = v => v
+        )
+    } yield parsed
 
     private def load(url: String)(implicit ec: ExecutionContext, mat: Materializer) = http.Command.get(url) {
         case HttpResponse(_, _, entity, _) => Unmarshal(entity).to[String]
@@ -47,7 +50,7 @@ object Articles {
         Validation.fromTryCatchNonFatal[String] {
             val n = elem.select(selector).first
             if (n != null && n.attr("content") != "") n.attr("content")
-            else throw ApiError(500, s"$selector not found")
+            else throw new ParseError(s"$selector not found")
         }.toValidationNel
 
     private def paragraphsOf(elem: Element): ValidationNel[Throwable, NonEmptyList[Paragraph]] =
@@ -55,7 +58,7 @@ object Articles {
             val ps = elem.select("article p:not(aside p):not(:has(small)), article h1, article h2, article h3, article h4, article h5, article h6").asScala.toList
             ps match {
                 case Nil =>
-                    throw ApiError(500, "No blocks can be parsed")
+                    throw new ParseError("No blocks can be parsed")
                 case _ =>
                     val paragraphs = ps.foldLeft(List.empty[Paragraph]) { (list, node) =>
                         val links = linksOf(node)
