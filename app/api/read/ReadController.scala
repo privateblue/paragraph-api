@@ -124,7 +124,7 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             val readTimestamp = Prop.Timestamp from node
             val readBody = PropertyValue.as[BlockBody](node)
             val author = authorOf(node).toOption
-            val sources = sourcesOf(node)
+            val sources = sourcesOf(node).sortBy(_.timestamp)
             (readBlockId |@| readTimestamp |@| readBody) {
                 case (blockId, timestamp, body) =>
                     Block(blockId, timestamp, body, author, sources)
