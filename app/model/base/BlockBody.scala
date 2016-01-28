@@ -15,7 +15,10 @@ object BlockBody {
         val image = "image"
     }
 
-    implicit val textFormat = Json.format[Text]
+    implicit val textFormat = new Format[Text] {
+        def reads(json: JsValue) = JsSuccess(Text((json \ "text").as[String], List()))
+        def writes(text: Text) = Json.obj("text" -> text.text, "externalLinks" -> text.externalLinks)
+    }
 
     implicit val titleFormat = Json.format[Title]
 
