@@ -48,13 +48,12 @@ POST    /register   @api.graph.GraphController.register
 # Creates a new block without connecting it to other blocks.
 #
 # The body of the HTTP request is a JSON object, with fields:
-# - "title": string, non unique, optional
 # - "body": JSON object, non unique, required
 #
 # The body JSON object consists of fields:
-# - "type": string, "text" | "image", required
+# - "label": string, "text" | "heading" | "image", required
 # - "content": JSON object, non unique, required
-# The content JSON object consists of one field, that is "text" if type equals "text", and "url" if type equals "image".
+# The content JSON object consists of one field, that is "text" if type equals "text" or "heading", and "uri" if type equals "image".
 #
 # Requires "token" url parameter, with a valid session token, identifying the current user.
 #
@@ -67,7 +66,6 @@ POST    /start      @api.graph.GraphController.start
 #
 # The body of the HTTP request is a JSON object, with fields:
 # - "target": string, non unique, required (the block id of the existing block)
-# - "title": string, non unique, optional
 # - "body": JSON object, non unique, required (see details at /start route)
 #
 # Requires "token" url parameter, with a valid session token, identifying the current user.
@@ -81,7 +79,6 @@ POST    /append     @api.graph.GraphController.append
 #
 # The body of the HTTP request is a JSON object, with fields:
 # - "target": string, non unique, required (the block id of the existing block)
-# - "title": string, non unique, optional
 # - "body": JSON object, non unique, required (see details at /start route)
 #
 # Requires "token" url parameter, with a valid session token, identifying the current user.
@@ -151,7 +148,6 @@ POST    /unfollow   @api.graph.GraphController.unfollow
 #
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "blockId": string (the block id of the block)
-# - "title": string
 # - "timestamp": number (the creation time of the Block)
 # - "body": JSON object (see details at /start route)
 # - "author": JSON object (see details at /block/:blockId/author route)
@@ -172,10 +168,10 @@ GET     /block/:blockId/author              @api.read.ReadController.author(bloc
 # Returns the sources of a Block.
 #
 # The body of the returned HTTP response is an array of JSON objects, each with fields:
-# - "pageId": string (the page id of the page)
 # - "timestamp": number (the creation time of the user)
 # - "url": String
 # - "author": String
+# - "title": String
 # - "site": String
 
 GET     /block/:blockId/sources             @api.read.ReadController.sources(blockId: BlockId)
@@ -232,7 +228,6 @@ GET     /block/:blockId/viewed/subscribe    @api.read.ReadController.viewed(bloc
 # - "userId": string (the user id of the author of the appended block)
 # - "timestamp": number (the creation time of the appended block)
 # - "target": string (the block id of this block)
-# - "title": string, optional
 # - "body": JSON object (see details at /start route)
 
 GET     /block/:blockId/appended/subscribe  @api.read.ReadController.appended(blockId: BlockId)
@@ -244,7 +239,6 @@ GET     /block/:blockId/appended/subscribe  @api.read.ReadController.appended(bl
 # - "userId": string (the user id of the author of the prepended block)
 # - "timestamp": number (the creation time of the prepended block)
 # - "target": string (the block id of this block)
-# - "title": string, optional
 # - "body": JSON object (see details at /start route)
 
 GET     /block/:blockId/prepended/subscribe  @api.read.ReadController.prepended(blockId: BlockId)

@@ -43,8 +43,8 @@ object NeoModel {
         def prop(body: BlockBody) = body match {
             case BlockBody.Text(text, links) =>
                 neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.text, Prop.BlockContent =:= text, Prop.BlockExternalLinks =:= links.distinct))
-            case BlockBody.Title(text) =>
-                neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.title, Prop.BlockContent =:= text))
+            case BlockBody.Heading(text) =>
+                neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.heading, Prop.BlockContent =:= text))
             case BlockBody.Image(uri) =>
                 neo.PropertyValue.Multi(List(Prop.BlockLabel =:= BlockBody.Label.image, Prop.BlockContent =:= uri))
         }
@@ -58,7 +58,7 @@ object NeoModel {
         private def parse(labelRead: ValidationNel[Throwable, String], bodyRead: ValidationNel[Throwable, String], externalLinksRead: ValidationNel[Throwable, Traversable[String]]): ValidationNel[Throwable, BlockBody] =
             (labelRead |@| bodyRead) {
                 case (BlockBody.Label.text, body) => BlockBody.Text(body, externalLinksRead.toList.flatten)
-                case (BlockBody.Label.title, body) => BlockBody.Title(body)
+                case (BlockBody.Label.heading, body) => BlockBody.Heading(body)
                 case (BlockBody.Label.image, body) => BlockBody.Image(body)
             }
     }

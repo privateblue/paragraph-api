@@ -62,7 +62,7 @@ object Articles {
                 case _ =>
                     val paragraphs = ps.foldLeft(List.empty[Paragraph]) { (list, node) =>
                         val links = linksOf(node)
-                        if (node.tag.getName.startsWith("h") && node.hasText) Paragraph.Title(node.text) :: list
+                        if (node.tag.getName.startsWith("h") && node.hasText) Paragraph.Heading(node.text) :: list
                         else if (node.tag.getName == "p" && node.hasText) Paragraph.Text(node.text, links) :: list
                         else imagesOf(node).map(Paragraph.Image(_)) ++ list
                     }.reverse

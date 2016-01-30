@@ -70,7 +70,6 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
 
     def prepend = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
-        val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
 
