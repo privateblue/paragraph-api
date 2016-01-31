@@ -45,8 +45,8 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
-    	    result <- Graph.start(timestamp, userId, blockId, blockBody).program
-    	    _ <- Messages.send("started", model.graph.Started(blockId, userId, timestamp, blockBody)).program
+    	    result <- Graph.start(timestamp, Some(userId), blockId, blockBody).program
+    	    _ <- Messages.send("started", model.graph.Started(blockId, Some(userId), timestamp, blockBody)).program
         } yield blockId
 
         Program.run(prg, global.env)
@@ -58,11 +58,16 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
-    	    result <- Graph.append(timestamp, userId, blockId, target, blockBody).program
+    	    result <- Graph.append(timestamp, Some(userId), blockId, target, blockBody).program
             (authorId, userName) = result
-    	    _ <- Messages.send("appended", model.graph.Appended(blockId, userId, timestamp, target, blockBody)).program
-            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has replied to your block", target, blockId)
-                 else Program.noop
+    	    _ <- Messages.send("appended", model.graph.Appended(blockId, Some(userId), timestamp, target, blockBody)).program
+            _ <- authorId match {
+                case Some(id) if userId != id =>
+                    val message = userName.map(name => s"$name has replied to your block").getOrElse("Your block has been replied")
+                    notify(id, timestamp, message, target, blockId)
+                case _ =>
+                    Program.noop
+            }
         } yield blockId
 
         Program.run(prg, global.env)
@@ -74,11 +79,16 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
-    	    result <- Graph.prepend(timestamp, userId, blockId, target, blockBody).program
+    	    result <- Graph.prepend(timestamp, Some(userId), blockId, target, blockBody).program
             (authorId, userName) = result
-    	    _ <- Messages.send("prepended", model.graph.Prepended(blockId, userId, timestamp, target, blockBody)).program
-            _ <- if (userId != authorId) notify(authorId, timestamp, s"$userName has shared your block", blockId, target)
-                 else Program.noop
+    	    _ <- Messages.send("prepended", model.graph.Prepended(blockId, Some(userId), timestamp, target, blockBody)).program
+            _ <- authorId match {
+                case Some(id) if userId != id =>
+                    val message = userName.map(name => s"$name has shared your block").getOrElse("Your block has been shared")
+                    notify(id, timestamp, message, blockId, target)
+                case _ =>
+                    Program.noop
+            }
         } yield blockId
 
         Program.run(prg, global.env)

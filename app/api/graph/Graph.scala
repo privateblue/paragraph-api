@@ -52,11 +52,13 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def start(timestamp: Long, userId: UserId, blockId: BlockId, blockBody: BlockBody) = {
-        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)})
-                          MERGE (a)-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]->(b:${Label.Block} ${l(Prop.BlockId =:= blockId,
-                                                                                                                 Prop.Timestamp =:= timestamp,
-                                                                                                                 PropertyValue(blockBody))})"""
+    def start(timestamp: Long, userId: Option[UserId], blockId: BlockId, blockBody: BlockBody) = {
+        val query = neo"""CREATE (b:${Label.Block} ${l(Prop.BlockId =:= blockId,
+                                                       Prop.Timestamp =:= timestamp,
+                                                       PropertyValue(blockBody))})
+                          WITH b
+                          OPTIONAL MATCH (a:${Label.User} ${l(Prop.UserId =?= userId)})
+                          MERGE (a)-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]->(b)"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) blockId
@@ -65,41 +67,47 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def append(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
-        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)}),
-                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} ${l(Prop.BlockId =:= target)})
+    def append(timestamp: Long, userId: Option[UserId], blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
+        val query = neo"""MATCH (b:${Label.Block} ${l(Prop.BlockId =:= target)})
+                          OPTIONAL MATCH (x:${Label.User})-[:${Arrow.Author}]->(b)
+                          OPTIONAL MATCH (a:${Label.User} ${l(Prop.UserId =?= userId)})
                           MERGE (b)-[:${Arrow.Link} ${l(Prop.UserId =:= userId,
                                                         Prop.Timestamp =:= timestamp)}]->(c:${Label.Block} ${l(Prop.BlockId =:= blockId,
                                                                                                                Prop.Timestamp =:= timestamp,
-                                                                                                               PropertyValue(blockBody))})<-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]-(a)
+                                                                                                               PropertyValue(blockBody))})
+                          MERGE (a)-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]->(c)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
                 val row = result.next().asScala.toMap
-                val authorId = "x" >>: Prop.UserId from row
-                val userName = "a" >>: Prop.UserName from row
-                (validate(authorId), validate(userName))
+                val authorId = "x" >>: Prop.UserId from row toOption
+                val userName = "a" >>: Prop.UserName from row toOption
+
+                (authorId, userName)
             } else throw NeoException("Append failed")
 
         Query.result(query)(read)
     }
 
-    def prepend(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
-        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)}),
-                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} ${l(Prop.BlockId =:= target)})
+    def prepend(timestamp: Long, userId: Option[UserId], blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
+        val query = neo"""MATCH (b:${Label.Block} ${l(Prop.BlockId =:= target)})
+                          OPTIONAL MATCH (x:${Label.User})-[:${Arrow.Author}]->(b)
+                          OPTIONAL MATCH (a:${Label.User} ${l(Prop.UserId =?= userId)})
                           MERGE (b)<-[:${Arrow.Link} ${l(Prop.UserId =:= userId,
                                                          Prop.Timestamp =:= timestamp)}]-(c:${Label.Block} ${l(Prop.BlockId =:= blockId,
                                                                                                                Prop.Timestamp =:= timestamp,
-                                                                                                               PropertyValue(blockBody))})<-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]-(a)
+                                                                                                               PropertyValue(blockBody))})
+                          MERGE (a)-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]->(c)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
                 val row = result.next().asScala.toMap
-                val authorId = "x" >>: Prop.UserId from row
-                val userName = "a" >>: Prop.UserName from row
-                (validate(authorId), validate(userName))
+                val authorId = "x" >>: Prop.UserId from row toOption
+                val userName = "a" >>: Prop.UserName from row toOption
+
+                (authorId, userName)
             } else throw NeoException("Prepend failed")
 
         Query.result(query)(read)

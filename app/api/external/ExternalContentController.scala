@@ -27,27 +27,27 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     import global.system
     import global.materializer
 
-    def pull = Actions.authenticated { (userId, timestamp, body) =>
+    def pull = Actions.public { (timestamp, body) =>
         val url = (body \ "url").as[String]
 
-        val prg = find(timestamp, userId, url, true)
+        val prg = find(timestamp, url, true)
 
         Program.run(prg, global.env)
     }
 
-    def resolve = Actions.authenticated { (userId, timestamp, body) =>
+    def resolve = Actions.public { (timestamp, body) =>
         val blockId = (body \ "blockId").as[BlockId]
 
-        val prg = appendExternalLinks(timestamp, userId, blockId)
+        val prg = appendExternalLinks(timestamp, blockId)
 
         Program.run(prg, global.env)
     }
 
-    private def find(timestamp: Long, userId: UserId, url: String, resolveLinks: Boolean): Program[NonEmptyList[BlockId]] = for {
+    private def find(timestamp: Long, url: String, resolveLinks: Boolean): Program[NonEmptyList[BlockId]] = for {
         page <- Pages.parse(url)
         got <- get(page.url).program
         blockIds <- got match {
-            case Nil => create(timestamp, userId, page, resolveLinks)
+            case Nil => create(timestamp, page, resolveLinks)
             case first::rest => Program.lift(NonEmptyList.nel(first, rest))
         }
     } yield blockIds
@@ -67,20 +67,20 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
         Query.result(query)(read)
     }
 
-    private def create(timestamp: Long, userId: UserId, page: Page, resolveLinks: Boolean): Program[NonEmptyList[BlockId]] = for {
+    private def create(timestamp: Long, page: Page, resolveLinks: Boolean): Program[NonEmptyList[BlockId]] = for {
         _ <- Graph.include(timestamp, page.url, page.author, page.title, page.site).program
 
         zero = Program.lift(List.empty[BlockId])
 
         linkedBlocks <- page.paragraphs.foldLeft(zero) {
-            (previous, paragraph) => previous.flatMap(blockIds => createBlock(timestamp, userId, page.url, blockIds, paragraph, resolveLinks))
+            (previous, paragraph) => previous.flatMap(blockIds => createBlock(timestamp, page.url, blockIds, paragraph, resolveLinks))
         }
     } yield NonEmptyList.nel(linkedBlocks.head, linkedBlocks.tail).reverse
 
-    private def createBlock(timestamp: Long, userId: UserId, url: String, blockIds: List[BlockId], paragraph: Paragraph, resolveLinks: Boolean): Program[List[BlockId]] = for {
+    private def createBlock(timestamp: Long, url: String, blockIds: List[BlockId], paragraph: Paragraph, resolveLinks: Boolean): Program[List[BlockId]] = for {
         blockId <- paragraph match {
             case Paragraph.Image(imageUrl) if url != imageUrl =>
-                find(timestamp, userId, imageUrl, false).map(_.head)
+                find(timestamp, imageUrl, false).map(_.head)
             case _ =>
                 Program.lift(BlockId(IdGenerator.key))
         }
@@ -90,33 +90,33 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
         _ <- blockIds.headOption.map { target =>
             paragraph match {
                 case Paragraph.Image(imageUrl) if url != imageUrl => Graph.link(timestamp, None, target, blockId).program
-                case _ => Graph.append(timestamp, userId, blockId, target, body).program
+                case _ => Graph.append(timestamp, None, blockId, target, body).program
             }
         }.getOrElse {
             paragraph match {
                 case Paragraph.Image(imageUrl) if url != imageUrl => Program.noop
-                case _ => Graph.start(timestamp, userId, blockId, body).program
+                case _ => Graph.start(timestamp, None, blockId, body).program
             }
         }
 
         _ <- Graph.source(timestamp, url, blockId, blockIds.length).program
 
         _ <- paragraph match {
-            case Paragraph.Text(_, _) if (resolveLinks) => appendExternalLinks(timestamp, userId, blockId)
+            case Paragraph.Text(_, _) if (resolveLinks) => appendExternalLinks(timestamp, blockId)
             case _ => Program.noop
         }
     } yield blockId::blockIds
 
-    private def appendExternalLinks(timestamp: Long, userId: UserId, blockId: BlockId) = for {
-        stories <- findExternalLinks(timestamp, userId, blockId)
+    private def appendExternalLinks(timestamp: Long, blockId: BlockId) = for {
+        stories <- findExternalLinks(timestamp, blockId)
         _ <- stories.map(story => Graph.link(timestamp, None, blockId, story.head)).sequenceU.program
     } yield ()
 
-    private def findExternalLinks(timestamp: Long, userId: UserId, blockId: BlockId): Program[List[NonEmptyList[BlockId]]] = for {
+    private def findExternalLinks(timestamp: Long, blockId: BlockId): Program[List[NonEmptyList[BlockId]]] = for {
         links <- getExternalLinks(blockId).program
         blocks <- links.map {
             url =>
-                val found = find(timestamp, userId, url, false).map(url -> _.list)
+                val found = find(timestamp, url, false).map(url -> _.list)
                 Program.recover(found) {
                     case ParseError(_) => url -> List.empty[BlockId]
                 }

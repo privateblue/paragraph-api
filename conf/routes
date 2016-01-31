@@ -266,12 +266,18 @@ GET     /block/:blockId/linked/subscribe    @api.read.ReadController.linked(bloc
 # The body of the HTTP request is a JSON object, with fields:
 # - "url": string, non unique, required (url of the external content)
 #
-# Requires "token" url parameter, with a valid session token, identifying the current user.
-#
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "data": array of strings (the list of block ids created)
 
 POST    /pull       @api.external.ExternalContentController.pull
+
+# Resolves the external links stored with the block, and turns them into linked blocks.
+#
+# The body of the HTTP request is a JSON object, with fields:
+# - "blockId": string, unique, required (the block id of the block)
+#
+# The body of the returned HTTP response is a JSON object, with fields:
+# - "data": "success"
 
 POST    /resolve    @api.external.ExternalContentController.resolve
 

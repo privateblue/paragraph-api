@@ -16,6 +16,9 @@ case class Property[T](name: String, identifier: Option[String] = None) {
     def =:=(value: Option[T])(implicit writer: NeoWriter[T]): PropertyValue =
         value.map(this =:= _).getOrElse(PropertyValue.Empty)
 
+    def =?=(value: Option[T])(implicit writer: NeoWriter[T]): PropertyValue =
+        value.map(this =:= _).getOrElse(PropertyValue.Single(name, null))
+
     def from(container: PropertyContainer)(implicit reader: NeoReader[T]): ValidationNel[Throwable, T] =
         Validation.fromTryCatchNonFatal[T] {
             val value = container.getProperty(name)
