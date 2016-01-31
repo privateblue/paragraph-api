@@ -40,7 +40,7 @@ sealed trait PropertyValue
 object PropertyValue {
     case object Empty extends PropertyValue
     case class Single(name: String, value: java.lang.Object) extends PropertyValue
-    case class Multi(values: List[Single]) extends PropertyValue
+    case class Multi(values: List[PropertyValue]) extends PropertyValue
 
     def apply[T](value: T)(implicit converter: PropertyConverter[T]) =
         converter.prop(value)

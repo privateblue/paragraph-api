@@ -25,8 +25,11 @@ package object neo {
 
                     case ((PropertyValue.Multi(values)::rest, q, params), cur) =>
                         val base = params.size
-                        val expr = values.zipWithIndex.map(e => s"${e._1.name}:{p${base + e._2}}" ).mkString(",")
-                        val map = values.zipWithIndex.map(e => (s"p${base + e._2}", e._1.value)).toMap
+                        val nonEmpties = values.collect {
+                            case s @ PropertyValue.Single(_, _) => s
+                        }
+                        val expr = nonEmpties.zipWithIndex.map(e => s"${e._1.name}:{p${base + e._2}}" ).mkString(",")
+                        val map = nonEmpties.zipWithIndex.map(e => (s"p${base + e._2}", e._1.value)).toMap
                         (rest, s"$q$expr$cur", params ++ map)
 
                     case ((other::rest, q, params), cur) =>
