@@ -105,9 +105,11 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def link(timestamp: Long, userId: UserId, from: BlockId, to: BlockId) = {
-        val query = neo"""MATCH (x:${Label.User})-[:${Arrow.Author}]->(a:${Label.Block} {${Prop.BlockId =:= from}}),
-                                (y:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= to}})
+    def link(timestamp: Long, userId: Option[UserId], from: BlockId, to: BlockId) = {
+        val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId =:= from}}),
+                                (b:${Label.Block} {${Prop.BlockId =:= to}})
+                          OPTIONAL MATCH (x:${Label.User})-[:${Arrow.Author}]->(a)
+                          OPTIONAL MATCH (y:${Label.User})-[:${Arrow.Author}]->(b)
                           MERGE (a)-[link:${Arrow.Link}]->(b)
                           ON CREATE SET link += {${Prop.UserId =:= userId},
                                                  ${Prop.Timestamp =:= timestamp}}
@@ -116,10 +118,10 @@ object Graph {
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates && result.hasNext) {
                 val row = result.next().asScala.toMap
-                val fromAuthorId = "x" >>: Prop.UserId from row
-                val toAuthorId = "y" >>: Prop.UserId from row
+                val fromAuthorId = "x" >>: Prop.UserId from row toOption
+                val toAuthorId = "y" >>: Prop.UserId from row toOption
 
-                (validate(fromAuthorId), validate(toAuthorId))
+                (fromAuthorId, toAuthorId)
             } else throw NeoException("Already linked")
 
         Query.result(query)(read)

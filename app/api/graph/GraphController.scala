@@ -89,7 +89,7 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
         val to = (body \ "to").as[BlockId]
 
         val prg = for {
-    	    result <- Graph.link(timestamp, userId, from, to).program
+    	    result <- Graph.link(timestamp, Some(userId), from, to).program
             (fromAuthorId, toAuthorId) = result
             userName <- Query.result(neo"""MATCH (u:${Label.User} {${Prop.UserId =:= userId}}) RETURN ${"u" >>: Prop.UserName}""") { result =>
                 if (result.hasNext) {
@@ -99,10 +99,14 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
                 } else throw NeoException(s"User $userId not found")
             }.program
     	    _ <- Messages.send("linked", model.graph.Linked(Some(userId), timestamp, from, to)).program
-            _ <- if (userId != fromAuthorId) notify(fromAuthorId, timestamp, s"$userName has linked your block", from, to)
-                 else Program.noop
-            _ <- if (userId != toAuthorId) notify(toAuthorId, timestamp, s"$userName has linked your block", from, to)
-                 else Program.noop
+            _ <- fromAuthorId match {
+                case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
+                case _ => Program.noop
+            }
+            _ <- toAuthorId match {
+                case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
+                case _ => Program.noop
+            }
         } yield ()
 
         Program.run(prg, global.env)

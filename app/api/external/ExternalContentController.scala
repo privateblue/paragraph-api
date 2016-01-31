@@ -89,7 +89,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
 
         _ <- blockIds.headOption.map { target =>
             paragraph match {
-                case Paragraph.Image(imageUrl) if url != imageUrl => Graph.link(timestamp, userId, target, blockId).program
+                case Paragraph.Image(imageUrl) if url != imageUrl => Graph.link(timestamp, None, target, blockId).program
                 case _ => Graph.append(timestamp, userId, blockId, target, body).program
             }
         }.getOrElse {
@@ -109,7 +109,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
 
     private def appendExternalLinks(timestamp: Long, userId: UserId, blockId: BlockId) = for {
         stories <- findExternalLinks(timestamp, userId, blockId)
-        _ <- stories.map(story => Graph.link(timestamp, userId, blockId, story.head)).sequenceU.program
+        _ <- stories.map(story => Graph.link(timestamp, None, blockId, story.head)).sequenceU.program
     } yield ()
 
     private def findExternalLinks(timestamp: Long, userId: UserId, blockId: BlockId): Program[List[NonEmptyList[BlockId]]] = for {
