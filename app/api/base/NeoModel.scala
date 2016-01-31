@@ -39,6 +39,8 @@ object NeoModel {
         val SourceIndex = neo.Property[Long]("index")
     }
 
+    def l(values: neo.PropertyValue*) = neo.PropertyValue.Multi(values.toList)
+
     implicit object BlockBodyPropertyConverter extends neo.PropertyConverter[BlockBody] {
         def prop(body: BlockBody) = body match {
             case BlockBody.Text(text, links) =>

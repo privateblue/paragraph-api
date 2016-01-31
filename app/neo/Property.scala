@@ -44,8 +44,16 @@ object PropertyValue {
 
     def apply[T](value: T)(implicit converter: PropertyConverter[T]) =
         converter.prop(value)
+
     def as[T](container: PropertyContainer)(implicit converter: PropertyConverter[T]): ValidationNel[Throwable, T] =
         converter.from(container)
+
     def as[T](row: Map[String, java.lang.Object])(implicit converter: PropertyConverter[T]): ValidationNel[Throwable, T] =
         converter.from(row)
+
+    def toList(value: PropertyValue): List[Single] = value match {
+        case Empty => List()
+        case Single(name, value) => List(Single(name, value))
+        case Multi(list) => list.map(toList).flatten 
+    }
 }

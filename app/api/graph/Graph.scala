@@ -26,11 +26,11 @@ object Graph {
     } yield ()
 
     def register(timestamp: Long, userId: UserId, name: String, hash: String, foreignId: String) = {
-        val query = neo"""CREATE (a:${Label.User} {${Prop.UserId =:= userId},
-                                                   ${Prop.Timestamp =:= timestamp},
-                                                   ${Prop.UserForeignId =:= foreignId},
-                                                   ${Prop.UserName =:= name},
-                                                   ${Prop.UserPassword =:= hash}})"""
+        val query = neo"""CREATE (a:${Label.User} ${l(Prop.UserId =:= userId,
+                                                      Prop.Timestamp =:= timestamp,
+                                                      Prop.UserForeignId =:= foreignId,
+                                                      Prop.UserName =:= name,
+                                                      Prop.UserPassword =:= hash)})"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) userId
@@ -40,11 +40,11 @@ object Graph {
     }
 
     def include(timestamp: Long, url: String, author: Option[String], title: Option[String], site: Option[String]) = {
-        val query = neo"""MERGE (a:${Label.Page} {${Prop.PageUrl =:= url}})
-                          ON CREATE SET a += {${Prop.Timestamp =:= timestamp},
-                                              ${Prop.PageAuthor =:= author},
-                                              ${Prop.PageTitle =:= title},
-                                              ${Prop.PageSite =:= site}}"""
+        val query = neo"""MERGE (a:${Label.Page} ${l(Prop.PageUrl =:= url)})
+                          ON CREATE SET a += ${l(Prop.Timestamp =:= timestamp,
+                                                 Prop.PageAuthor =:= author,
+                                                 Prop.PageTitle =:= title,
+                                                 Prop.PageSite =:= site)}"""
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) url
             else NeoException(s"Page $url has not been included")
@@ -53,10 +53,10 @@ object Graph {
     }
 
     def start(timestamp: Long, userId: UserId, blockId: BlockId, blockBody: BlockBody) = {
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})
-                          MERGE (a)-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]->(b:${Label.Block} {${Prop.BlockId =:= blockId},
-                                                                                                             ${Prop.Timestamp =:= timestamp},
-                                                                                                             ${PropertyValue(blockBody)}})"""
+        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)})
+                          MERGE (a)-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]->(b:${Label.Block} ${l(Prop.BlockId =:= blockId,
+                                                                                                                 Prop.Timestamp =:= timestamp,
+                                                                                                                 PropertyValue(blockBody))})"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) blockId
@@ -66,12 +66,12 @@ object Graph {
     }
 
     def append(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
-                          MERGE (b)-[:${Arrow.Link} {${Prop.UserId =:= userId},
-                                                     ${Prop.Timestamp =:= timestamp}}]->(c:${Label.Block} {${Prop.BlockId =:= blockId},
-                                                                                                           ${Prop.Timestamp =:= timestamp},
-                                                                                                           ${PropertyValue(blockBody)}})<-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]-(a)
+        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)}),
+                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} ${l(Prop.BlockId =:= target)})
+                          MERGE (b)-[:${Arrow.Link} ${l(Prop.UserId =:= userId,
+                                                        Prop.Timestamp =:= timestamp)}]->(c:${Label.Block} ${l(Prop.BlockId =:= blockId,
+                                                                                                               Prop.Timestamp =:= timestamp,
+                                                                                                               PropertyValue(blockBody))})<-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]-(a)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
@@ -86,12 +86,12 @@ object Graph {
     }
 
     def prepend(timestamp: Long, userId: UserId, blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} {${Prop.BlockId =:= target}})
-                          MERGE (b)<-[:${Arrow.Link} {${Prop.UserId =:= userId},
-                                                      ${Prop.Timestamp =:= timestamp}}]-(c:${Label.Block} {${Prop.BlockId =:= blockId},
-                                                                                                           ${Prop.Timestamp =:= timestamp},
-                                                                                                           ${PropertyValue(blockBody)}})<-[:${Arrow.Author} {${Prop.Timestamp =:= timestamp}}]-(a)
+        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)}),
+                                (x:${Label.User})-[:${Arrow.Author}]->(b:${Label.Block} ${l(Prop.BlockId =:= target)})
+                          MERGE (b)<-[:${Arrow.Link} ${l(Prop.UserId =:= userId,
+                                                         Prop.Timestamp =:= timestamp)}]-(c:${Label.Block} ${l(Prop.BlockId =:= blockId,
+                                                                                                               Prop.Timestamp =:= timestamp,
+                                                                                                               PropertyValue(blockBody))})<-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]-(a)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
@@ -106,13 +106,13 @@ object Graph {
     }
 
     def link(timestamp: Long, userId: Option[UserId], from: BlockId, to: BlockId) = {
-        val query = neo"""MATCH (a:${Label.Block} {${Prop.BlockId =:= from}}),
-                                (b:${Label.Block} {${Prop.BlockId =:= to}})
+        val query = neo"""MATCH (a:${Label.Block} ${l(Prop.BlockId =:= from)}),
+                                (b:${Label.Block} ${l(Prop.BlockId =:= to)})
                           OPTIONAL MATCH (x:${Label.User})-[:${Arrow.Author}]->(a)
                           OPTIONAL MATCH (y:${Label.User})-[:${Arrow.Author}]->(b)
                           MERGE (a)-[link:${Arrow.Link}]->(b)
-                          ON CREATE SET link += {${Prop.UserId =:= userId},
-                                                 ${Prop.Timestamp =:= timestamp}}
+                          ON CREATE SET link += ${l(Prop.UserId =:= userId,
+                                                    Prop.Timestamp =:= timestamp)}
                           RETURN ${"x" >>: Prop.UserId}, ${"y" >>: Prop.UserId}"""
 
         def read(result: Result) =
@@ -128,11 +128,11 @@ object Graph {
     }
 
     def view(timestamp: Long, userId: UserId, target: BlockId) = {
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (b:${Label.Block} {${Prop.BlockId =:= target}})
+        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)}),
+                                (b:${Label.Block} ${l(Prop.BlockId =:= target)})
                           WHERE NOT (a)-[:${Arrow.Author}]->(b)
                           MERGE (a)-[view:${Arrow.View}]->(b)
-                          ON CREATE SET view += {${Prop.Timestamp =:= timestamp}}
+                          ON CREATE SET view += ${l(Prop.Timestamp =:= timestamp)}
                           RETURN ${"a" >>: Prop.UserName}"""
 
         def read(result: Result) =
@@ -146,10 +146,10 @@ object Graph {
     }
 
     def source(timestamp: Long, url: String, blockId: BlockId, index: Long) = {
-        val query = neo"""MATCH (p:${Label.Page} {${Prop.PageUrl =:= url}}),
-                                (b:${Label.Block} {${Prop.BlockId =:= blockId}})
-                          MERGE (p)-[s:${Arrow.Source} {${Prop.SourceIndex =:= index}}]->(b)
-                          ON CREATE SET s += {${Prop.Timestamp =:= timestamp}}"""
+        val query = neo"""MATCH (p:${Label.Page} ${l(Prop.PageUrl =:= url)}),
+                                (b:${Label.Block} ${l(Prop.BlockId =:= blockId)})
+                          MERGE (p)-[s:${Arrow.Source} ${l(Prop.SourceIndex =:= index)}]->(b)
+                          ON CREATE SET s += ${l(Prop.Timestamp =:= timestamp)}"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) ()
@@ -159,10 +159,10 @@ object Graph {
     }
 
     def follow(timestamp: Long, userId: UserId, target: UserId) = {
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}}),
-                                (b:${Label.User} {${Prop.UserId =:= target}})
+        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)}),
+                                (b:${Label.User} ${l(Prop.UserId =:= target)})
                           MERGE (a)-[follow:${Arrow.Follow}]->(b)
-                          ON CREATE SET follow += {${Prop.Timestamp =:= timestamp}}"""
+                          ON CREATE SET follow += ${l(Prop.Timestamp =:= timestamp)}"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) ()
@@ -172,7 +172,7 @@ object Graph {
     }
 
     def unfollow(timestamp: Long, userId: UserId, target: UserId) = {
-        val query = neo"""MATCH (a:${Label.User} {${Prop.UserId =:= userId}})-[r:${Arrow.Follow}]->(b:${Label.User} {${Prop.UserId =:= target}})
+        val query = neo"""MATCH (a:${Label.User} ${l(Prop.UserId =:= userId)})-[r:${Arrow.Follow}]->(b:${Label.User} ${l(Prop.UserId =:= target)})
                           DELETE r"""
 
         def read(result: Result) =

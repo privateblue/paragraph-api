@@ -53,7 +53,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     } yield blockIds
 
     private def get(url: String) = {
-        val query = neo"""MATCH (page:${Label.Page} {${Prop.PageUrl =:= url}})-[source:${Arrow.Source}]->(block:${Label.Block})
+        val query = neo"""MATCH (page:${Label.Page} ${l(Prop.PageUrl =:= url)})-[source:${Arrow.Source}]->(block:${Label.Block})
                           RETURN ${"block" >>: Prop.BlockId}
                           ORDER BY ${"source" >>: Prop.SourceIndex}"""
 
@@ -139,8 +139,8 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     }
 
     private def updateExternalLinks(blockId: BlockId, links: Traversable[String]) = {
-        val query = neo"""MATCH (block:${Label.Block} {${Prop.BlockId =:= blockId}})
-                          SET block += {${Prop.BlockExternalLinks =:= links}}"""
+        val query = neo"""MATCH (block:${Label.Block} ${l(Prop.BlockId =:= blockId)})
+                          SET block += ${l(Prop.BlockExternalLinks =:= links)}"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) ()
