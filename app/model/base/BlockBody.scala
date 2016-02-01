@@ -1,51 +1,41 @@
 package model.base
 
-import neo.PropertyReader
-import neo.PropertyWriter
-
 import play.api.libs.json._
 
-sealed trait BlockBody {
-    val label: String = this match {
-        case BlockBody.Text(_) => BlockBody.Label.text
-        case BlockBody.Image(_) => BlockBody.Label.image
-    }
-}
+sealed trait BlockBody
 
 object BlockBody {
-    case class Text(text: String) extends BlockBody
+    case class Text(text: String, externalLinks: List[String]) extends BlockBody
+    case class Heading(text: String) extends BlockBody
     case class Image(uri: String) extends BlockBody
 
     object Label {
         val text = "text"
+        val heading = "heading"
         val image = "image"
     }
 
-    implicit object BlockBodyWriter extends PropertyWriter[BlockBody] {
-        def write(body: BlockBody) = body match {
-            case Text(text) => implicitly[PropertyWriter[String]].write(text)
-            case Image(uri) => implicitly[PropertyWriter[String]].write(uri)
-        }
+    implicit val textFormat = new Format[Text] {
+        def reads(json: JsValue) = JsSuccess(Text((json \ "text").as[String], List()))
+        def writes(text: Text) = Json.obj("text" -> text.text, "externalLinks" -> text.externalLinks)
     }
 
-    implicit val textReader = implicitly[PropertyReader[String]].map(Text.apply)
-
-    implicit val imageReader = implicitly[PropertyReader[String]].map(Image.apply)
-
-    implicit val textFormat = Json.format[Text]
+    implicit val headingFormat = Json.format[Heading]
 
     implicit val imageFormat = Json.format[Image]
 
     implicit val blockBodyFormat = new Format[BlockBody] {
         def reads(json: JsValue) = JsSuccess(
-            (json \ "type").as[String] match {
+            (json \ "label").as[String] match {
                 case Label.text => (json \ "content").as[Text]
+                case Label.heading => (json \ "content").as[Heading]
                 case Label.image => (json \ "content").as[Image]
             }
         )
         def writes(body: BlockBody) = body match {
-            case b @ Text(_) => Json.obj("type" -> Label.text, "content" -> b)
-            case b @ Image(_) => Json.obj("type" -> Label.image, "content" -> b)
+            case b @ Text(_, _) => Json.obj("label" -> Label.text, "content" -> b)
+            case b @ Heading(_) => Json.obj("label" -> Label.heading, "content" -> b)
+            case b @ Image(_) => Json.obj("label" -> Label.image, "content" -> b)
         }
     }
 }

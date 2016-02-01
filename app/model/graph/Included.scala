@@ -1,10 +1,10 @@
-package model.read
+package model.graph
 
 import model.base._
 
 import play.api.libs.json._
 
-case class Page(
+case class Included(
     timestamp: Long,
     url: String,
     author: Option[String],
@@ -12,6 +12,6 @@ case class Page(
     site: Option[String]
 )
 
-object Page {
-    implicit val pageWrites = Json.writes[Page]
+object Included {
+    implicit val includedFormat = Json.format[Included]
 }

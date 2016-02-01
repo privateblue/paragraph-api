@@ -1,7 +1,7 @@
 package model.base
 
-import neo.PropertyReader
-import neo.PropertyWriter
+import neo.NeoReader
+import neo.NeoWriter
 
 import play.api.mvc._
 import play.api.libs.json._

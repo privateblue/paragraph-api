@@ -1,10 +1,14 @@
 package api
 
+import org.neo4j.graphdb.GraphDatabaseService
+
 import scalaz._
 import Scalaz._
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 package object base {
     def validate[T](validation: ValidationNel[Throwable, T]): T =
@@ -13,39 +17,44 @@ package object base {
             succ = t => t
         )
 
-    type AsyncErr[T] = EitherT[Future, Throwable, T]
-    type Program[T] = Kleisli[AsyncErr, Env, T]
+    type Err[T] = Throwable \/ T
+    type Program[T] = Kleisli[Err, Env, T]
 
     object Program {
-        def lift[T](value: => T): Program[T] =
-            Kleisli[AsyncErr, Env, T](_ => EitherT(Future.successful(value.right)))
+        def lift[T](value: => T): Program[T] = value.point[Program]
 
         val noop: Program[Unit] = lift(())
 
-        def run[T](program: Program[T], env: Env)(implicit ec: ExecutionContext): Future[T] =
-            program(env).run.flatMap {
-                case -\/(e) => Future.failed(e)
-                case \/-(res) => Future.successful(res)
+        def run[T](program: Program[T], env: Env): Future[T] = {
+            val transactional = neo.Query.transaction(program.local[GraphDatabaseService](Env(_, env.redis, env.kafka, env.http)))
+            transactional.program(env).fold(
+                l = (e) => Future.failed(e),
+                r = (res) => Future.successful(res)
+            )
+        }
+
+        def recover[T](program: Program[T])(fn: PartialFunction[Throwable, T]): Program[T] =
+            program.mapK {
+                case -\/(e) if fn.isDefinedAt(e) => fn(e).right
+                case v => v
             }
     }
 
     implicit class FromNeoQuery[T](query: neo.Query.Exec[T]) {
-        def program(implicit ec: ExecutionContext): Program[T] =
-            neo.Query.transaction(query).mapK[AsyncErr, T](v => EitherT(Future(v))).local(_.db)
+        def program: Program[T] = query.local(_.db)
+    }
+
+    implicit class FromKafka[T](command: kafka.Command.Exec[T]) {
+        def program: Program[T] = command.local(_.kafka)
     }
 
     implicit class FromRedisCommand[T](command: redis.Command.Exec[T]) {
         def program(implicit ec: ExecutionContext): Program[T] =
-            command.mapK[AsyncErr, T](f => EitherT(f.map(\/.right))).local(_.redis)
-    }
-
-    implicit class FromKafka[T](command: kafka.Command.Exec[T]) {
-        def program: Program[T] =
-            command.mapK[AsyncErr, T](v => EitherT(Future.successful(v))).local(_.kafka)
+            command.mapK[Err, T](f => Await.result(f.map(_.right).recover { case t => t.left }, Duration.Inf)).local(_.redis)
     }
 
     implicit class FromHttpClient[T](command: http.Command.Exec[T]) {
         def program(implicit ec: ExecutionContext): Program[T] =
-            command.mapK[AsyncErr, T](f => EitherT(f.map(\/.right))).local(_.http)
+            command.mapK[Err, T](f => Await.result(f.map(_.right).recover { case t => t.left }, Duration.Inf)).local(_.http)
     }
 }

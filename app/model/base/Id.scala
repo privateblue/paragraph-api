@@ -1,7 +1,7 @@
 package model.base
 
-import neo.PropertyReader
-import neo.PropertyWriter
+import neo.NeoReader
+import neo.NeoWriter
 
 import redis.ByteStringSerializer
 import redis.ByteStringDeserializer
@@ -19,8 +19,8 @@ trait IdInstances[Key, T <: Id[Key]] {
 
     private val parse = fromString _ andThen apply _
 
-    implicit def idReader(implicit reader: PropertyReader[Key]) = reader.map(apply)
-    implicit def idWriter(implicit writer: PropertyWriter[Key]) = writer.contramap[T](_.key)
+    implicit def idReader(implicit reader: NeoReader[Key]) = reader.map(apply)
+    implicit def idWriter(implicit writer: NeoWriter[Key]) = writer.contramap[T](_.key)
 
     implicit def idFormat(implicit format: Format[Key]) = new Format[T] {
         def reads(json: JsValue) = JsSuccess(apply(json.as[Key]))

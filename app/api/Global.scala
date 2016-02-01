@@ -28,8 +28,6 @@ import play.api.inject.ApplicationLifecycle
 import scalaz._
 import Scalaz._
 
-import scala.collection.JavaConversions._
-
 import scala.concurrent.Future
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

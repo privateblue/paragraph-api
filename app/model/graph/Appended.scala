@@ -6,10 +6,9 @@ import play.api.libs.json._
 
 case class Appended(
     blockId: BlockId,
-    userId: UserId,
+    userId: Option[UserId],
     timestamp: Long,
     target: BlockId,
-    title: Option[String],
     body: BlockBody
 )
 

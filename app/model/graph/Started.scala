@@ -6,9 +6,8 @@ import play.api.libs.json._
 
 case class Started(
     blockId: BlockId,
-    userId: UserId,
+    userId: Option[UserId],
     timestamp: Long,
-    title: Option[String],
     body: BlockBody
 )
 

@@ -16,7 +16,7 @@ import play.api.mvc._
 import scalaz._
 import Scalaz._
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class GraphController @javax.inject.Inject() (implicit global: api.Global) extends Controller {
     import api.base.NeoModel._
@@ -41,13 +41,12 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
     }
 
     def start = Actions.authenticated { (userId, timestamp, body) =>
-        val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
-    	    result <- Graph.start(timestamp, userId, blockId, title, blockBody).program
-    	    _ <- Messages.send("started", model.graph.Started(blockId, userId, timestamp, title, blockBody)).program
+    	    result <- Graph.start(timestamp, Some(userId), blockId, blockBody).program
+    	    _ <- Messages.send("started", model.graph.Started(blockId, Some(userId), timestamp, blockBody)).program
         } yield blockId
 
         Program.run(prg, global.env)
@@ -55,17 +54,19 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
 
     def append = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
-        val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
-    	    result <- Graph.append(timestamp, userId, blockId, target, title, blockBody).program
+    	    result <- Graph.append(timestamp, Some(userId), blockId, target, blockBody).program
             (authorId, userName) = result
-    	    _ <- Messages.send("appended", model.graph.Appended(blockId, userId, timestamp, target, title, blockBody)).program
+    	    _ <- Messages.send("appended", model.graph.Appended(blockId, Some(userId), timestamp, target, blockBody)).program
             _ <- authorId match {
-                case Some(id) if userId != id => notify(id, timestamp, s"$userName has replied to your block", target, blockId)
-                case _ => Program.noop
+                case Some(id) if userId != id =>
+                    val message = userName.map(name => s"$name has replied to your block").getOrElse("Your block has been replied")
+                    notify(id, timestamp, message, target, blockId)
+                case _ =>
+                    Program.noop
             }
         } yield blockId
 
@@ -74,17 +75,19 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
 
     def prepend = Actions.authenticated { (userId, timestamp, body) =>
         val target = (body \ "target").as[BlockId]
-        val title = (body \ "title").asOpt[String]
         val blockBody = (body \ "body").as[BlockBody]
         val blockId = BlockId(IdGenerator.key)
 
         val prg = for {
-    	    result <- Graph.prepend(timestamp, userId, blockId, target, title, blockBody).program
+    	    result <- Graph.prepend(timestamp, Some(userId), blockId, target, blockBody).program
             (authorId, userName) = result
-    	    _ <- Messages.send("prepended", model.graph.Prepended(blockId, userId, timestamp, target, title, blockBody)).program
+    	    _ <- Messages.send("prepended", model.graph.Prepended(blockId, Some(userId), timestamp, target, blockBody)).program
             _ <- authorId match {
-                case Some(id) if userId != id => notify(id, timestamp, s"$userName has shared your block", blockId, target)
-                case _ => Program.noop
+                case Some(id) if userId != id =>
+                    val message = userName.map(name => s"$name has shared your block").getOrElse("Your block has been shared")
+                    notify(id, timestamp, message, blockId, target)
+                case _ =>
+                    Program.noop
             }
         } yield blockId
 
@@ -98,9 +101,9 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
         val prg = for {
     	    result <- Graph.link(timestamp, Some(userId), from, to).program
             (fromAuthorId, toAuthorId) = result
-            userName <- Query.result(neo"""MATCH (u:${Label.User} {${Prop.UserId =:= userId}}) RETURN ${"u" >>: Prop.UserName}""") { result =>
+            userName <- Query.result(neo"""MATCH (u:${Label.User} ${l(Prop.UserId =:= userId)}) RETURN ${"u" >>: Prop.UserName}""") { result =>
                 if (result.hasNext) {
-                    val row = result.next().toMap
+                    val row = result.next().asScala.toMap
                     val userName = "u" >>: Prop.UserName from row
                     validate(userName)
                 } else throw NeoException(s"User $userId not found")

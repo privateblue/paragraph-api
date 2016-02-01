@@ -6,9 +6,7 @@ import org.neo4j.graphdb.Result
 import scalaz._
 import Scalaz._
 
-import scala.collection.JavaConversions._
-
-case class Query(q: String, params: Map[String, AnyRef])
+case class Query(q: String, params: java.util.Map[String, java.lang.Object])
 
 object Query {
     type Err[T] = Throwable \/ T

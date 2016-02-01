@@ -6,11 +6,10 @@ import play.api.libs.json._
 
 case class Block(
     blockId: BlockId,
-    title: Option[String],
     timestamp: Long,
     body: BlockBody,
     author: Option[User],
-    source: Option[Page]
+    sources: List[Page]
 )
 
 object Block {
