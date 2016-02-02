@@ -55,7 +55,8 @@ object Graph {
     def start(timestamp: Long, userId: Option[UserId], blockId: BlockId, blockBody: BlockBody) = {
         val query = neo"""CREATE (b:${Label.Block} ${l(Prop.BlockId =:= blockId,
                                                        Prop.Timestamp =:= timestamp,
-                                                       PropertyValue(blockBody))})
+                                                       PropertyValue(blockBody),
+                                                       Prop.BlockModified =:= timestamp)})
                           WITH b
                           OPTIONAL MATCH (a:${Label.User} ${l(Prop.UserId =?= userId)})
                           MERGE (a)-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]->(b)"""
@@ -74,7 +75,8 @@ object Graph {
                           MERGE (b)-[:${Arrow.Link} ${l(Prop.UserId =:= userId,
                                                         Prop.Timestamp =:= timestamp)}]->(c:${Label.Block} ${l(Prop.BlockId =:= blockId,
                                                                                                                Prop.Timestamp =:= timestamp,
-                                                                                                               PropertyValue(blockBody))})
+                                                                                                               PropertyValue(blockBody),
+                                                                                                               Prop.BlockModified =:= timestamp)})
                           MERGE (a)-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]->(c)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 
@@ -97,7 +99,8 @@ object Graph {
                           MERGE (b)<-[:${Arrow.Link} ${l(Prop.UserId =:= userId,
                                                          Prop.Timestamp =:= timestamp)}]-(c:${Label.Block} ${l(Prop.BlockId =:= blockId,
                                                                                                                Prop.Timestamp =:= timestamp,
-                                                                                                               PropertyValue(blockBody))})
+                                                                                                               PropertyValue(blockBody),
+                                                                                                               Prop.BlockModified =:= timestamp)})
                           MERGE (a)-[:${Arrow.Author} ${l(Prop.Timestamp =:= timestamp)}]->(c)
                           RETURN ${"x" >>: Prop.UserId}, ${"a" >>: Prop.UserName}"""
 

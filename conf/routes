@@ -149,6 +149,7 @@ POST    /unfollow   @api.graph.GraphController.unfollow
 # The body of the returned HTTP response is a JSON object, with fields:
 # - "blockId": string (the block id of the block)
 # - "timestamp": number (the creation time of the Block)
+# - "modified": number (the time of the last modification of the Block)
 # - "body": JSON object (see details at /start route)
 # - "author": JSON object (see details at /block/:blockId/author route)
 # - "sources": array of JSON objects (see details at /block/:blockId/sources route)

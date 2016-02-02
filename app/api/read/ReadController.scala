@@ -122,12 +122,13 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         if (node.getLabels.asScala.toSeq.contains(Label.Block)) {
             val readBlockId = Prop.BlockId from node
             val readTimestamp = Prop.Timestamp from node
+            val readModified = Prop.BlockModified from node
             val readBody = PropertyValue.as[BlockBody](node)
             val author = authorOf(node).toOption
             val sources = sourcesOf(node).sortBy(_.timestamp)
-            (readBlockId |@| readTimestamp |@| readBody) {
-                case (blockId, timestamp, body) =>
-                    Block(blockId, timestamp, body, author, sources)
+            (readBlockId |@| readTimestamp |@| readModified |@| readBody) {
+                case (blockId, timestamp, modified, body) =>
+                    Block(blockId, timestamp, modified, body, author, sources)
             }
         } else ApiError(500, "Cannot convert node to Block").failureNel[Block]
 

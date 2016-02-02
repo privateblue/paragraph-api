@@ -28,6 +28,7 @@ object NeoModel {
         val BlockLabel = neo.Property[String]("label")
         val BlockContent = neo.Property[String]("content")
         val BlockExternalLinks = neo.Property[Traversable[String]]("externalLinks")
+        val BlockModified = neo.Property[Long]("modified")
         val UserId = neo.Property[UserId]("userId")
         val UserForeignId = neo.Property[String]("foreignId")
         val UserName = neo.Property[String]("name")
