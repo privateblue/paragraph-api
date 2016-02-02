@@ -68,6 +68,18 @@ object Graph {
         Query.result(query)(read)
     }
 
+    def edit(timestamp: Long, blockId: BlockId, blockBody: BlockBody) = {
+        val query = neo"""MATCH (b:${Label.Block} ${l(Prop.BlockId =:= blockId)})
+                          SET b += ${l(PropertyValue(blockBody),
+                                       Prop.BlockModified =:= timestamp)}"""
+
+        def read(result: Result) =
+            if (result.getQueryStatistics.containsUpdates) blockId
+            else throw NeoException("Block has not been updated")
+
+        Query.result(query)(read)
+    }
+
     def append(timestamp: Long, userId: Option[UserId], blockId: BlockId, target: BlockId, blockBody: BlockBody) = {
         val query = neo"""MATCH (b:${Label.Block} ${l(Prop.BlockId =:= target)})
                           OPTIONAL MATCH (x:${Label.User})-[:${Arrow.Author}]->(b)

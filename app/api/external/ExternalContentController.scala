@@ -113,8 +113,15 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     } yield ()
 
     private def findExternalLinks(timestamp: Long, blockId: BlockId): Program[List[NonEmptyList[BlockId]]] = for {
-        links <- getExternalLinks(blockId).program
-        blocks <- links.map {
+        body <- getBlockBody(blockId).program
+        stories <- body match {
+            case b @ BlockBody.Text(_, _) => resolveExternalLinks(timestamp, blockId, b)
+            case _ => Program.lift(List.empty[NonEmptyList[BlockId]])
+        }
+    } yield stories
+
+    private def resolveExternalLinks(timestamp: Long, blockId: BlockId, body: BlockBody.Text): Program[List[NonEmptyList[BlockId]]] = for {
+        blocks <- body.externalLinks.map {
             url =>
                 val found = find(timestamp, url, false).map(url -> _.list)
                 Program.recover(found) {
@@ -124,28 +131,18 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
         linksToKeep = blocks.collect {
             case (url, story) if story.isEmpty => url
         }
-        _ <- updateExternalLinks(blockId, linksToKeep).program
+        _ <- Graph.edit(timestamp, blockId, BlockBody.Text(body.text, linksToKeep)).program
         stories = blocks.collect {
             case (url, first::rest) => NonEmptyList.nel(first, rest)
         }
     } yield stories
 
-    private def getExternalLinks(blockId: BlockId) = Query.lift { db =>
+    private def getBlockBody(blockId: BlockId) = Query.lift { db =>
         val blockIdProp = Prop.BlockId =:= blockId
         val node = db.findNode(Label.Block, blockIdProp.name, blockIdProp.value)
         Option(node)
-            .map(Prop.BlockExternalLinks.from(_).toList.flatten)
+            .map(PropertyValue.as[BlockBody](_).toOption)
+            .flatten
             .getOrElse(throw ApiError(404, s"Block $blockId not found"))
-    }
-
-    private def updateExternalLinks(blockId: BlockId, links: Traversable[String]) = {
-        val query = neo"""MATCH (block:${Label.Block} ${l(Prop.BlockId =:= blockId)})
-                          SET block += ${l(Prop.BlockExternalLinks =:= links)}"""
-
-        def read(result: Result) =
-            if (result.getQueryStatistics.containsUpdates) ()
-            else throw NeoException(s"Block $blockId not found")
-
-        Query.result(query)(read)
     }
 }
