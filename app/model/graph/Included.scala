@@ -9,6 +9,7 @@ case class Included(
     url: String,
     author: Option[String],
     title: Option[String],
+    published: Option[Long],
     site: Option[String]
 )
 

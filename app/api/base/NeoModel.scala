@@ -37,6 +37,7 @@ object NeoModel {
         val PageAuthor = neo.Property[String]("author")
         val PageTitle = neo.Property[String]("title")
         val PageSite = neo.Property[String]("site")
+        val PagePublished = neo.Property[Long]("published")
         val SourceIndex = neo.Property[Long]("index")
     }
 

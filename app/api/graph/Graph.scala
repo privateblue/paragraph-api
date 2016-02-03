@@ -39,12 +39,13 @@ object Graph {
         Query.result(query)(read)
     }
 
-    def include(timestamp: Long, url: String, author: Option[String], title: Option[String], site: Option[String]) = {
+    def include(timestamp: Long, url: String, author: Option[String], title: Option[String], site: Option[String], published: Option[Long]) = {
         val query = neo"""MERGE (a:${Label.Page} ${l(Prop.PageUrl =:= url)})
                           ON CREATE SET a += ${l(Prop.Timestamp =:= timestamp,
                                                  Prop.PageAuthor =:= author,
                                                  Prop.PageTitle =:= title,
-                                                 Prop.PageSite =:= site)}"""
+                                                 Prop.PageSite =:= site,
+                                                 Prop.PagePublished =:= published)}"""
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) url
             else NeoException(s"Page $url has not been included")

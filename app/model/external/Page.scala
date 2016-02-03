@@ -7,5 +7,6 @@ case class Page(
     author: Option[String],
     title: Option[String],
     site: Option[String],
+    published: Option[Long],
     paragraphs: NonEmptyList[Paragraph]
 )

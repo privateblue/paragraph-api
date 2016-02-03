@@ -34,7 +34,7 @@ object Articles {
 
     private def page(elem: Element): ValidationNel[Throwable, Page] = {
         (canonicalUrlOf(elem) |@| authorOf(elem) |@| titleOf(elem) |@| siteOf(elem) |@| paragraphsOf(elem)) {
-            case (url, author, title, site, paragraphs) => Page(url, Some(author), Some(title), Some(site), paragraphs)
+            case (url, author, title, site, paragraphs) => Page(url, Some(author), Some(title), Some(site), timeOf(elem).toOption, paragraphs)
         }
     }
 
@@ -51,6 +51,26 @@ object Articles {
             val n = elem.select(selector).first
             if (n != null && n.attr("content") != "") n.attr("content")
             else throw new ParseError(s"$selector not found")
+        }.toValidationNel
+
+    private def timeOf(elem: Element): ValidationNel[Throwable, Long] =
+        Validation.fromTryCatchNonFatal[Long] {
+            val times = elem.select("article time")
+            val datetime = times.asScala.toList match {
+                case Nil => throw new ParseError("No time found")
+                case head::Nil => head.attr("datetime")
+                case head::tail =>
+                    val datePublished = times.select("time[itemprop=datePublished]").first
+                    if (datePublished != null) datePublished.attr("datetime")
+                    else head.attr("datetime")
+            }
+            val parsed = try {
+                java.time.ZonedDateTime.parse(datetime, java.time.format.DateTimeFormatter.ISO_ZONED_DATE_TIME)
+            } catch {
+                case e: java.time.format.DateTimeParseException =>
+                    java.time.ZonedDateTime.parse(datetime, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZZ"))
+            }
+            parsed.toInstant.toEpochMilli
         }.toValidationNel
 
     private def paragraphsOf(elem: Element): ValidationNel[Throwable, NonEmptyList[Paragraph]] =

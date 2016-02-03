@@ -68,7 +68,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     }
 
     private def create(timestamp: Long, page: Page, resolveLinks: Boolean): Program[NonEmptyList[BlockId]] = for {
-        _ <- Graph.include(timestamp, page.url, page.author, page.title, page.site).program
+        _ <- Graph.include(timestamp, page.url, page.author, page.title, page.site, page.published).program
 
         zero = Program.lift(List.empty[BlockId])
 

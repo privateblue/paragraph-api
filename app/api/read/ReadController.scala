@@ -157,7 +157,8 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
         author = Prop.PageAuthor.from(page).toOption
         title = Prop.PageTitle.from(page).toOption
         site = Prop.PageSite.from(page).toOption
-    } yield Page(timestamp, url, author, title, site)
+        published = Prop.PagePublished.from(page).toOption
+    } yield Page(timestamp, url, author, title, site, published)
 
     private def viewsOf(node: Node): List[Author] = for {
         rel <- node.getRelationships(Arrow.View, Direction.INCOMING).asScala.toList
