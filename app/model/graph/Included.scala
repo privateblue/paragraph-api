@@ -9,8 +9,8 @@ case class Included(
     url: String,
     author: Option[String],
     title: Option[String],
-    published: Option[Long],
-    site: Option[String]
+    site: Option[String],
+    published: Option[Long]
 )
 
 object Included {
