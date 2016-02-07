@@ -13,7 +13,7 @@ object Query {
     type Exec[T] = ReaderT[Err, GraphDatabaseService, T]
 
     def execute(query: Query): Exec[Unit] =
-        result(query)(_ => ().right)
+        result(query)(_ => ())
 
     def result[T](query: Query)(fn: Result => T): Exec[T] =
         Kleisli[Err, GraphDatabaseService, T] { db =>
