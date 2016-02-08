@@ -5,9 +5,9 @@ import model.base._
 import play.api.libs.json._
 
 case class Prepended(
-    blockId: BlockId,
-    userId: Option[UserId],
     timestamp: Long,
+    userId: Option[UserId],
+    blockId: BlockId,
     target: BlockId,
     body: BlockBody
 )

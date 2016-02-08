@@ -46,7 +46,7 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
 
         val prg = for {
     	    result <- Graph.start(timestamp, Some(userId), blockId, blockBody).program
-    	    _ <- Messages.send("started", model.graph.Started(blockId, Some(userId), timestamp, blockBody)).program
+    	    _ <- Messages.send("started", model.graph.Started(timestamp, Some(userId), blockId, blockBody)).program
         } yield blockId
 
         Program.run(prg, global.env)
@@ -60,7 +60,7 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
         val prg = for {
     	    result <- Graph.append(timestamp, Some(userId), blockId, target, blockBody).program
             (authorId, userName) = result
-    	    _ <- Messages.send("appended", model.graph.Appended(blockId, Some(userId), timestamp, target, blockBody)).program
+    	    _ <- Messages.send("appended", model.graph.Appended(timestamp, Some(userId), blockId, target, blockBody)).program
             _ <- authorId match {
                 case Some(id) if userId != id =>
                     val message = userName.map(name => s"$name has replied to your block").getOrElse("Your block has been replied")
@@ -81,7 +81,7 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
         val prg = for {
     	    result <- Graph.prepend(timestamp, Some(userId), blockId, target, blockBody).program
             (authorId, userName) = result
-    	    _ <- Messages.send("prepended", model.graph.Prepended(blockId, Some(userId), timestamp, target, blockBody)).program
+    	    _ <- Messages.send("prepended", model.graph.Prepended(timestamp, Some(userId), blockId, target, blockBody)).program
             _ <- authorId match {
                 case Some(id) if userId != id =>
                     val message = userName.map(name => s"$name has shared your block").getOrElse("Your block has been shared")
@@ -108,7 +108,7 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
                     validate(userName)
                 } else throw NeoException(s"User $userId not found")
             }.program
-    	    _ <- Messages.send("linked", model.graph.Linked(Some(userId), timestamp, from, to)).program
+    	    _ <- Messages.send("linked", model.graph.Linked(timestamp, Some(userId), from, to)).program
             _ <- fromAuthorId match {
                 case Some(id) if userId != id => notify(id, timestamp, s"$userName has linked your block", from, to)
                 case _ => Program.noop

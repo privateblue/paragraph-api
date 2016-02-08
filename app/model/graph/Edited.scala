@@ -5,8 +5,8 @@ import model.base._
 import play.api.libs.json._
 
 case class Edited(
-    blockId: BlockId,
     timestamp: Long,
+    blockId: BlockId,
     body: BlockBody
 )
 

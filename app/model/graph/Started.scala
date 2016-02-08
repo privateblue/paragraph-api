@@ -5,9 +5,9 @@ import model.base._
 import play.api.libs.json._
 
 case class Started(
-    blockId: BlockId,
-    userId: Option[UserId],
     timestamp: Long,
+    userId: Option[UserId],
+    blockId: BlockId,
     body: BlockBody
 )
 

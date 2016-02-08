@@ -69,6 +69,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
 
     private def create(timestamp: Long, page: Page, resolveLinks: Boolean): Program[NonEmptyList[BlockId]] = for {
         _ <- Graph.include(timestamp, page.url, page.author, page.title, page.site, page.published).program
+        _ <- Messages.send("included", model.graph.Included(timestamp, page.url, page.author, page.title, page.site, page.published)).program
 
         zero = Program.lift(List.empty[BlockId])
 
@@ -89,17 +90,28 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
 
         _ <- blockIds.headOption.map { target =>
             paragraph match {
-                case Paragraph.Image(imageUrl) if url != imageUrl => Graph.link(timestamp, None, target, blockId).program
-                case _ => Graph.append(timestamp, None, blockId, target, body).program
+                case Paragraph.Image(imageUrl) if url != imageUrl => for {
+                    _ <- Graph.link(timestamp, None, target, blockId).program
+                    _ <- Messages.send("linked", model.graph.Linked(timestamp, None, target, blockId)).program
+                } yield ()
+                case _ => for {
+                    _ <- Graph.append(timestamp, None, blockId, target, body).program
+                    _ <- Messages.send("appended", model.graph.Appended(timestamp, None, blockId, target, body)).program
+                } yield ()
             }
         }.getOrElse {
             paragraph match {
                 case Paragraph.Image(imageUrl) if url != imageUrl => Program.noop
-                case _ => Graph.start(timestamp, None, blockId, body).program
+                case _ => for {
+                    _ <- Graph.start(timestamp, None, blockId, body).program
+                    _ <- Messages.send("started", model.graph.Started(timestamp, None, blockId, body)).program
+                } yield ()
             }
         }
 
         _ <- Graph.source(timestamp, url, blockId, blockIds.length).program
+
+        _ <- Messages.send("sourced", model.graph.Sourced(timestamp, url, blockId, blockIds.length)).program
 
         _ <- paragraph match {
             case Paragraph.Text(_, _) if (resolveLinks) => appendExternalLinks(timestamp, blockId)
@@ -110,6 +122,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
     private def appendExternalLinks(timestamp: Long, blockId: BlockId) = for {
         stories <- findExternalLinks(timestamp, blockId)
         _ <- stories.map(story => Graph.link(timestamp, None, blockId, story.head)).sequenceU.program
+        _ <- stories.map(story => Messages.send("linked", model.graph.Linked(timestamp, None, blockId, story.head))).sequenceU.program
     } yield ()
 
     private def findExternalLinks(timestamp: Long, blockId: BlockId): Program[List[NonEmptyList[BlockId]]] = for {
@@ -132,6 +145,7 @@ class ExternalContentController @javax.inject.Inject() (implicit global: api.Glo
             case (url, story) if story.isEmpty => url
         }
         _ <- Graph.edit(timestamp, blockId, BlockBody.Text(body.text, linksToKeep)).program
+        _ <- Messages.send("edited", model.graph.Edited(timestamp, blockId, BlockBody.Text(body.text, linksToKeep))).program
         stories = blocks.collect {
             case (url, first::rest) => NonEmptyList.nel(first, rest)
         }
