@@ -75,7 +75,7 @@ object Articles {
 
     private def paragraphsOf(elem: Element): ValidationNel[Throwable, NonEmptyList[Paragraph]] =
         Validation.fromTryCatchNonFatal[NonEmptyList[Paragraph]] {
-            val ps = elem.select("article p:not(aside p):not(:has(small)), article h1, article h2, article h3, article h4, article h5, article h6").asScala.toList
+            val ps = elem.select("article p:not(aside p):not(:has(small)), article figure, article h1, article h2, article h3, article h4, article h5, article h6").asScala.toList
             ps match {
                 case Nil =>
                     throw new ParseError("No blocks can be parsed")
@@ -84,7 +84,8 @@ object Articles {
                         val links = linksOf(node)
                         if (node.tag.getName.startsWith("h") && node.hasText) Paragraph.Heading(node.text) :: list
                         else if (node.tag.getName == "p" && node.hasText) Paragraph.Text(node.text, links) :: list
-                        else imagesOf(node).map(Paragraph.Image(_)) ++ list
+                        else if (node.tag.getName == "figure") imagesOf(node).map(Paragraph.Image(_)) ++ list
+                        else list
                     }.reverse
                     NonEmptyList.nel(paragraphs.head, paragraphs.tail)
             }
