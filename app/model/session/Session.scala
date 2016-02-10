@@ -7,7 +7,8 @@ import play.api.libs.json._
 case class Session(
     userId: UserId,
     token: String,
-    name: String
+    name: String,
+    avatar: Option[String]
 )
 
 object Session {

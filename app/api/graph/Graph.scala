@@ -25,12 +25,13 @@ object Graph {
         _ <- Query.execute(neo"CREATE CONSTRAINT ON (n:${Label.Page}) ASSERT n.${Prop.PageUrl} IS UNIQUE")
     } yield ()
 
-    def register(timestamp: Long, userId: UserId, name: String, hash: String, foreignId: String) = {
+    def register(timestamp: Long, userId: UserId, name: String, hash: String, foreignId: String, avatar: Option[String]) = {
         val query = neo"""CREATE (a:${Label.User} ${l(Prop.UserId =:= userId,
                                                       Prop.Timestamp =:= timestamp,
                                                       Prop.UserForeignId =:= foreignId,
                                                       Prop.UserName =:= name,
-                                                      Prop.UserPassword =:= hash)})"""
+                                                      Prop.UserPassword =:= hash,
+                                                      Prop.UserAvatar =:= avatar)})"""
 
         def read(result: Result) =
             if (result.getQueryStatistics.containsUpdates) userId

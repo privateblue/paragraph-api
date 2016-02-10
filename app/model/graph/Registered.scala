@@ -5,11 +5,12 @@ import model.base._
 import play.api.libs.json._
 
 case class Registered(
-    userId: UserId,
     timestamp: Long,
-    foreignId: String,
+    userId: UserId,
     name: String,
-    password: String
+    hash: String,
+    foreignId: String,
+    avatar: Option[String]
 )
 
 object Registered {

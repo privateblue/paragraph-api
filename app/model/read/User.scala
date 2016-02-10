@@ -8,7 +8,8 @@ case class User(
     userId: UserId,
     timestamp: Long,
     foreignId: String,
-    name: String
+    name: String,
+    avatar: Option[String]
 )
 
 object User {

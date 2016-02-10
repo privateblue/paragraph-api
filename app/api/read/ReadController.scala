@@ -144,8 +144,10 @@ class ReadController @javax.inject.Inject() (implicit global: api.Global) extend
             val readTimestamp = Prop.Timestamp from node
             val readForeignId = Prop.UserForeignId from node
             val readName = Prop.UserName from node
+            val avatar = Prop.UserAvatar from node toOption
+
             (readUserId |@| readTimestamp |@| readForeignId |@| readName) {
-                case (userId, timestamp, foreignId, name) => User(userId, timestamp, foreignId, name)
+                case (userId, timestamp, foreignId, name) => User(userId, timestamp, foreignId, name, avatar)
             }
         } else ApiError(500, "Cannot convert node to User").failureNel[User]
 

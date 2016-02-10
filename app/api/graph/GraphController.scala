@@ -28,13 +28,14 @@ class GraphController @javax.inject.Inject() (implicit global: api.Global) exten
     def register = Actions.public { (timestamp, body) =>
         val foreignId = (body \ "foreignId").as[String]
         val name = (body \ "name").as[String]
+        val avatar = (body \ "avatar").asOpt[String]
         val password = (body \ "password").as[String]
         val hash = BCrypt.hashpw(password, BCrypt.gensalt)
         val userId = UserId(IdGenerator.key)
 
         val prg = for {
-    	    result <- Graph.register(timestamp, userId, name, hash, foreignId).program
-    	    _ <- Messages.send("registered", model.graph.Registered(userId, timestamp, foreignId, name, password)).program
+    	    result <- Graph.register(timestamp, userId, name, hash, foreignId, avatar).program
+    	    _ <- Messages.send("registered", model.graph.Registered(timestamp, userId, name, hash, foreignId, avatar)).program
     	} yield userId
 
         Program.run(prg, global.env)
