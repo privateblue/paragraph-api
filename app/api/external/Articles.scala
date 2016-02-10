@@ -84,7 +84,7 @@ object Articles {
                         val links = linksOf(node)
                         if (node.tag.getName.startsWith("h") && node.hasText) Paragraph.Heading(node.text) :: list
                         else if (node.tag.getName == "p" && node.hasText) Paragraph.Text(node.text, links) :: list
-                        else if (node.tag.getName == "figure") imagesOf(node).map(Paragraph.Image(_)) ++ list
+                        else if (node.tag.getName == "p" || node.tag.getName == "figure") imagesOf(node).map(Paragraph.Image(_)) ++ list
                         else list
                     }.reverse
                     NonEmptyList.nel(paragraphs.head, paragraphs.tail)
